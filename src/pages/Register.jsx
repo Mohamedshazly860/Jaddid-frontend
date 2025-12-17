@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import './Register.css';
+import "./Register.css";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -11,7 +11,7 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [role, setRole] = useState(""); 
+  const [role, setRole] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,18 +22,19 @@ export default function Register() {
     }
 
     try {
-      await axios.post("http://localhost:8000/api/auth/register/", {
+      await axios.post("http://localhost:8000/api/accounts/register/", {
         first_name: firstName,
         last_name: lastName,
-        email,
-        password,
-        role,
+        email: email,
+        password: password,
+        confirm_password: confirmPassword,
+        role: role,
       });
 
       navigate("/login");
-
     } catch (error) {
       console.error(error);
+      console.error("Backend Error:", error.response?.data || error.message);
       alert("Registration failed! Check your data.");
     }
   };
@@ -92,9 +93,9 @@ export default function Register() {
             required
           >
             <option value="">Select Role</option>
-            <option value="individual">Individual</option>
-            <option value="company">Company</option>
-            <option value="admin">Admin</option>
+            <option value="Individual">Individual</option>
+            <option value="Company">Company</option>
+            <option value="Admin">Admin</option>
           </select>
           <button
             type="submit"

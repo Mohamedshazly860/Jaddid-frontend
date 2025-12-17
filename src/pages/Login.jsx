@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 
-import './Login.css';
+import "./Login.css";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth(); 
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -15,16 +15,18 @@ export default function Login() {
     e.preventDefault();
 
     try {
-      const response = await axios.post("http://localhost:8000/api/auth/login/", {
-        email,
-        password,
-      });
+      const response = await axios.post(
+        "http://localhost:8000/api/accounts/login/",
+        {
+          email,
+          password,
+        }
+      );
 
       const { token, user } = response.data;
 
       login(user, token);
       navigate("/");
-
     } catch (error) {
       console.error(error);
       alert("Login failed! Check your credentials.");
