@@ -41,80 +41,77 @@ export default function Register() {
   return (
     <div className="register-page">
       <div className="register-form-container">
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="w-full max-w-md p-8 bg-card rounded-lg shadow-lg">
-            <h1 className="text-3xl font-bold text-foreground mb-6 text-center">
-              Register
-            </h1>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <input
-                type="text"
-                placeholder="First Name"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-              <input
-                type="text"
-                placeholder="Last Name"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-              <input
-                type="password"
-                placeholder="Confirm Password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              >
-                <option value="individual">Individual</option>
-                <option value="company">Company</option>
-                <option value="admin">Admin</option>
-              </select>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-secondary text-secondary-foreground rounded hover:bg-orange transition-colors"
-              >
-                Register
-              </button>
-            </form>
-            <p className="mt-4 text-center text-muted-foreground">
-              Already have an account?{" "}
-              <span
-                className="text-primary hover:underline cursor-pointer"
-                onClick={() => navigate("/login")}
-              >
-                Login
-              </span>
-            </p>
-          </div>
-        </div>
+        <h1 className="text-3xl font-bold text-forest mb-6 text-center">
+          Create Account
+        </h1>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <input
+            type="text"
+            placeholder="First Name"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            className="px-4 py-3 border border-sage/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage focus:border-transparent transition-all bg-white/50"
+            required
+          />
+          <input
+            type="text"
+            placeholder="Last Name"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            className="px-4 py-3 border border-sage/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage focus:border-transparent transition-all bg-white/50"
+            required
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="px-4 py-3 border border-sage/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage focus:border-transparent transition-all bg-white/50"
+            required
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="px-4 py-3 border border-sage/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage focus:border-transparent transition-all bg-white/50"
+            required
+          />
+          <input
+            type="password"
+            placeholder="Confirm Password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="px-4 py-3 border border-sage/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage focus:border-transparent transition-all bg-white/50"
+            required
+          />
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            className="px-4 py-3 border border-sage/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage focus:border-transparent transition-all bg-white/50"
+            required
+          >
+            <option value="">Select Role</option>
+            <option value="individual">Individual</option>
+            <option value="company">Company</option>
+            <option value="admin">Admin</option>
+          </select>
+          <button
+            type="submit"
+            className="px-4 py-3 bg-orange text-white rounded-lg hover:bg-orange/90 transition-all font-medium shadow-md hover:shadow-lg"
+          >
+            Create Account
+          </button>
+        </form>
+        <p className="mt-4 text-center text-muted-foreground">
+          Already have an account?{" "}
+          <span
+            className="text-forest hover:underline cursor-pointer font-medium"
+            onClick={() => navigate("/login")}
+          >
+            Login
+          </span>
+        </p>
       </div>
     </div>
   );

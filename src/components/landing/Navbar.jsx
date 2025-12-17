@@ -3,8 +3,7 @@ import { useState } from 'react';
 import { Menu, X, Globe, Recycle } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate, Link } from "react-router-dom";
 
 
 
@@ -12,7 +11,6 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const { language, setLanguage, t, isRTL } = useLanguage();
-const { user, logout, isAuthenticated } = useAuth();
   const toggleLanguage = () => {
     setLanguage(language === 'en' ? 'ar' : 'en');
   };
@@ -27,24 +25,24 @@ const { user, logout, isAuthenticated } = useAuth();
               <Recycle className="w-7 h-7 text-white" />
             </div>
             <span className={`text-2xl font-bold text-foreground ${isRTL ? 'font-arabic' : 'font-primary'}`}>
-              {isRTL ? 'جديد' : 'Jaddid'}
+              {isRTL ? 'جدد' : 'Jaddid'}
             </span>
           </div>
 
           {/* Desktop Navigation */}
           <div className={`hidden md:flex items-center gap-8 ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <a href="#" className="text-forest hover:text-orange transition-colors font-medium">
+            <Link to="/" className="text-forest hover:text-orange transition-colors font-medium">
               {t('nav.home')}
-            </a>
-            <a href="#" className="text-muted-foreground hover:text-forest transition-colors font-medium">
+            </Link>
+            <Link to="/marketplace" className="text-muted-foreground hover:text-forest transition-colors font-medium">
               {t('nav.marketplace')}
-            </a>
-            <a href="#" className="text-muted-foreground hover:text-forest transition-colors font-medium">
+            </Link>
+            <Link to="/marketplace/orders" className="text-muted-foreground hover:text-forest transition-colors font-medium">
               {t('nav.orders')}
-            </a>
-            <a href="#" className="text-muted-foreground hover:text-forest transition-colors font-medium">
+            </Link>
+            <Link to="/marketplace/favorites" className="text-muted-foreground hover:text-forest transition-colors font-medium">
               {t('nav.profile')}
-            </a>
+            </Link>
           </div>
 
           {/* Actions */}
@@ -57,25 +55,12 @@ const { user, logout, isAuthenticated } = useAuth();
               <span className="font-medium">{language === 'en' ? 'العربية' : 'English'}</span>
             </button>
 
-            {/* <Button className="btn-primary" onClick={() => navigate('/register')}>
-            {t('nav.getStarted')}
+            <Button className="btn-primary" onClick={() => navigate('/register')}>
+              {t('nav.getStarted')}
             </Button>
-
             <Button className="btn-primary" onClick={() => navigate('/login')}>
-            {language === 'en' ? 'Login' : 'دخول'}    
+              {language === 'en' ? 'Login' : 'دخول'}
             </Button>
- */}
-  {!isAuthenticated ? (
-    <>
-      <Button className="btn-primary" onClick={() => navigate('/register')}>Register</Button>
-      <Button className="btn-primary" onClick={() => navigate('/login')}>{language === 'en' ? 'Login' : 'دخول'}</Button>
-    </>
-  ) : (
-    <>
-      <span className="px-4 py-2">{user.role}</span>
-      <Button className="btn-primary" onClick={logout}>Logout</Button>
-    </>
-  )}
 
           </div>
 
@@ -92,18 +77,18 @@ const { user, logout, isAuthenticated } = useAuth();
         {isOpen && (
           <div className="md:hidden py-4 border-t border-sage/20 animate-fade-in-up">
             <div className="flex flex-col gap-4">
-              <a href="#" className="text-foreground font-medium py-2">
+              <Link to="/" className="text-foreground font-medium py-2">
                 {t('nav.home')}
-              </a>
-              <a href="#" className="text-muted-foreground font-medium py-2">
+              </Link>
+              <Link to="/marketplace" className="text-muted-foreground font-medium py-2">
                 {t('nav.marketplace')}
-              </a>
-              <a href="#" className="text-muted-foreground font-medium py-2">
+              </Link>
+              <Link to="/marketplace/orders" className="text-muted-foreground font-medium py-2">
                 {t('nav.orders')}
-              </a>
-              <a href="#" className="text-muted-foreground font-medium py-2">
+              </Link>
+              <Link to="/marketplace/favorites" className="text-muted-foreground font-medium py-2">
                 {t('nav.profile')}
-              </a>
+              </Link>
               <div className="flex gap-4 pt-4">
                 <button
                   onClick={toggleLanguage}
@@ -113,23 +98,12 @@ const { user, logout, isAuthenticated } = useAuth();
                   <span>{language === 'en' ? 'العربية' : 'English'}</span>
                 </button>
                 
-                {/* <Button className="btn-secondary w-full" onClick={() => navigate('/register')}>
-                {t('nav.getStarted')}
+                <Button className="btn-secondary w-full" onClick={() => navigate('/register')}>
+                  {t('nav.getStarted')}
                 </Button>
                 <Button className="btn-primary w-full" onClick={() => navigate('/login')}>
-                {language === 'en' ? 'Login' : 'دخول'}
-                </Button> */}
-  {!isAuthenticated ? (
-    <>
-      <Button className="btn-secondary w-full" onClick={() => navigate('/register')}>Register</Button>
-      <Button className="btn-primary w-full" onClick={() => navigate('/login')}>{language === 'en' ? 'Login' : 'دخول'}</Button>
-    </>
-  ) : (
-    <>
-      <span className="px-4 py-2 w-full text-center">{user.role}</span>
-      <Button className="btn-primary w-full" onClick={logout}>Logout</Button>
-    </>
-  )}
+                  {language === 'en' ? 'Login' : 'دخول'}
+                </Button>
               </div>
             </div>
           </div>

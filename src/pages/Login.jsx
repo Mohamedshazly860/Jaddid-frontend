@@ -34,8 +34,8 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-form-container">
-        <h1 className="text-3xl font-bold text-foreground mb-6 text-center">
-          Login
+        <h1 className="text-3xl font-bold text-forest mb-6 text-center">
+          Welcome Back
         </h1>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
@@ -43,7 +43,7 @@ export default function Login() {
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+            className="px-4 py-3 border border-sage/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage focus:border-transparent transition-all bg-white/50"
             required
           />
           <input
@@ -51,12 +51,12 @@ export default function Login() {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+            className="px-4 py-3 border border-sage/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage focus:border-transparent transition-all bg-white/50"
             required
           />
           <button
             type="submit"
-            className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-forest transition-colors"
+            className="px-4 py-3 bg-forest text-white rounded-lg hover:bg-forest/90 transition-all font-medium shadow-md hover:shadow-lg"
           >
             Login
           </button>
@@ -64,7 +64,7 @@ export default function Login() {
         <p className="mt-4 text-center text-muted-foreground">
           Don't have an account?{" "}
           <span
-            className="text-secondary hover:underline cursor-pointer"
+            className="text-orange hover:underline cursor-pointer font-medium"
             onClick={() => navigate("/register")}
           >
             Register

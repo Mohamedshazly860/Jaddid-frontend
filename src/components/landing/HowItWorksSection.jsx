@@ -32,8 +32,8 @@ export default function HowItWorksSection() {
   return (
     <section className="py-24 bg-forest text-white relative overflow-hidden">
       {/* Decorative elements */}
-      <div className="absolute top-20 left-10 w-40 h-40 bg-sage/20 rounded-full blur-2xl" />
-      <div className="absolute bottom-20 right-10 w-60 h-60 bg-orange/10 rounded-full blur-3xl" />
+      <div className="absolute top-20 left-10 w-40 h-40 bg-sage/10 rounded-full blur-2xl" />
+      <div className="absolute bottom-20 right-10 w-60 h-60 bg-orange/5 rounded-full blur-3xl" />
       
       <div className="container mx-auto px-4 relative z-10">
         {/* Header */}
@@ -65,17 +65,17 @@ export default function HowItWorksSection() {
               )}
               
               {/* Card */}
-              <div className="bg-sage/20 backdrop-blur-sm p-8 rounded-3xl border border-sage/30 card-hover relative h-full flex flex-col">
+              <div className="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20 card-hover relative h-full flex flex-col shadow-xl">
                 {/* Step number */}
-                <div className={`absolute -top-5 ${isRTL ? 'right-8' : 'left-8'} w-12 h-12 bg-orange rounded-xl flex items-center justify-center text-forest font-bold text-lg shadow-lg`}>
+                <div className={`absolute -top-5 ${isRTL ? 'right-8' : 'left-8'} w-12 h-12 bg-orange rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg`}>
                   {step.number}
                 </div>
                 
                 {/* Icon - Centered and professional */}
-                <div className={`w-full h-48 flex items-center justify-center mt-4 mb-6 ${step.iconBg} rounded-2xl`}>
+                <div className={`w-full h-32 flex items-center justify-center mt-4 mb-6`}>
                   <step.Icon 
-                    className="w-32 h-32 text-forest group-hover:scale-110 transition-transform duration-500"
-                    strokeWidth={1.5}
+                    className="w-16 h-16 text-white/90 group-hover:scale-110 transition-transform duration-500"
+                    strokeWidth={1.8}
                   />
                 </div>
                 
