@@ -1,12 +1,18 @@
+// Jaddid-frontend/src/components/landing/Navbar.jsx
 import { useState } from 'react';
 import { Menu, X, Globe, Recycle } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+
+
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
   const { language, setLanguage, t, isRTL } = useLanguage();
-
+const { user, logout, isAuthenticated } = useAuth();
   const toggleLanguage = () => {
     setLanguage(language === 'en' ? 'ar' : 'en');
   };
@@ -50,9 +56,27 @@ export default function Navbar() {
               <Globe className="w-4 h-4" />
               <span className="font-medium">{language === 'en' ? 'العربية' : 'English'}</span>
             </button>
-            <Button className="btn-primary">
-              {t('nav.getStarted')}
+
+            {/* <Button className="btn-primary" onClick={() => navigate('/register')}>
+            {t('nav.getStarted')}
             </Button>
+
+            <Button className="btn-primary" onClick={() => navigate('/login')}>
+            {language === 'en' ? 'Login' : 'دخول'}    
+            </Button>
+ */}
+  {!isAuthenticated ? (
+    <>
+      <Button className="btn-primary" onClick={() => navigate('/register')}>Register</Button>
+      <Button className="btn-primary" onClick={() => navigate('/login')}>{language === 'en' ? 'Login' : 'دخول'}</Button>
+    </>
+  ) : (
+    <>
+      <span className="px-4 py-2">{user.role}</span>
+      <Button className="btn-primary" onClick={logout}>Logout</Button>
+    </>
+  )}
+
           </div>
 
           {/* Mobile Menu Button */}
@@ -88,9 +112,24 @@ export default function Navbar() {
                   <Globe className="w-4 h-4" />
                   <span>{language === 'en' ? 'العربية' : 'English'}</span>
                 </button>
-                <Button className="btn-primary flex-1">
-                  {t('nav.getStarted')}
+                
+                {/* <Button className="btn-secondary w-full" onClick={() => navigate('/register')}>
+                {t('nav.getStarted')}
                 </Button>
+                <Button className="btn-primary w-full" onClick={() => navigate('/login')}>
+                {language === 'en' ? 'Login' : 'دخول'}
+                </Button> */}
+  {!isAuthenticated ? (
+    <>
+      <Button className="btn-secondary w-full" onClick={() => navigate('/register')}>Register</Button>
+      <Button className="btn-primary w-full" onClick={() => navigate('/login')}>{language === 'en' ? 'Login' : 'دخول'}</Button>
+    </>
+  ) : (
+    <>
+      <span className="px-4 py-2 w-full text-center">{user.role}</span>
+      <Button className="btn-primary w-full" onClick={logout}>Logout</Button>
+    </>
+  )}
               </div>
             </div>
           </div>
