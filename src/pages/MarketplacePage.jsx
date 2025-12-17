@@ -179,13 +179,13 @@ const MarketplacePage = () => {
       </CardContent>
       
       <CardFooter className="gap-2">
-        <Button asChild className="flex-1 bg-forest hover:bg-forest/90 text-white">
+        <Button asChild className="flex-1 bg-forest hover:bg-forest/80 hover:shadow-lg transition-all text-white">
           <Link to={`/marketplace/${type}/${item.id}`}>View Details</Link>
         </Button>
         <Button 
           variant="outline" 
           size="icon" 
-          className="border-sage/50 hover:bg-sage/10"
+          className="border-sage/50 hover:bg-sage/30 hover:border-sage transition-colors"
           onClick={() => {
             if (!isAuthenticated) {
               toast({
@@ -235,7 +235,7 @@ const MarketplacePage = () => {
               <div className="flex gap-2 w-full md:w-auto">
                 <Button 
                   variant="outline" 
-                  className="border-sage/50 hover:bg-sage/10"
+                  className="border-sage/50 hover:bg-sage/30 hover:border-sage transition-colors"
                   onClick={() => isAuthenticated ? navigate('/marketplace/favorites') : navigate('/login')}
                 >
                   <Heart className="w-4 h-4 mr-2" />
@@ -243,7 +243,7 @@ const MarketplacePage = () => {
                 </Button>
                 <Button 
                   variant="outline" 
-                  className="border-sage/50 hover:bg-sage/10"
+                  className="border-sage/50 hover:bg-sage/30 hover:border-sage transition-colors"
                   onClick={() => isAuthenticated ? navigate('/marketplace/cart') : navigate('/login')}
                 >
                   <ShoppingCart className="w-4 h-4 mr-2" />
@@ -251,14 +251,14 @@ const MarketplacePage = () => {
                 </Button>
                 <Button 
                   variant="outline" 
-                  className="border-sage/50 hover:bg-sage/10"
+                  className="border-sage/50 hover:bg-sage/30 hover:border-sage transition-colors"
                   onClick={() => isAuthenticated ? navigate('/marketplace/orders') : navigate('/login')}
                 >
                   <Package className="w-4 h-4 mr-2" />
                   Orders
                 </Button>
                 <Button 
-                  className="bg-orange hover:bg-orange/90 text-white"
+                  className="bg-orange hover:bg-orange/80 hover:shadow-lg transition-all text-white"
                   onClick={() => {
                     if (!isAuthenticated) {
                       toast({
@@ -289,7 +289,7 @@ const MarketplacePage = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="flex-1 border-sage/30 focus-visible:ring-forest"
                 />
-                <Button type="submit" className="bg-forest hover:bg-forest/90">
+                <Button type="submit" className="bg-forest hover:bg-forest/80 hover:shadow-lg transition-all">
                   <Search className="w-4 h-4 mr-2" />
                   Search
                 </Button>
