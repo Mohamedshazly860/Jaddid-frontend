@@ -39,10 +39,7 @@ const CartPage = () => {
     if (newQuantity < 1) return;
     
     try {
-      await marketplaceService.cart.updateItem({
-        item_id: itemId,
-        quantity: newQuantity,
-      });
+      await marketplaceService.cart.updateItem(itemId, { quantity: newQuantity });
       fetchCart();
       toast({
         title: 'Updated',
@@ -59,7 +56,7 @@ const CartPage = () => {
 
   const removeItem = async (itemId) => {
     try {
-      await marketplaceService.cart.removeItem({ item_id: itemId });
+      await marketplaceService.cart.removeItem(itemId);
       fetchCart();
       toast({
         title: 'Removed',

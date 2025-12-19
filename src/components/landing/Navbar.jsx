@@ -1,6 +1,6 @@
 // Jaddid-frontend/src/components/landing/Navbar.jsx
 import { useState } from 'react';
-import { Menu, X, Globe, Recycle, Bell, User, LogOut, UserCircle } from 'lucide-react';
+import { Menu, X, Globe, Recycle, Bell, User, LogOut, UserCircle, Package } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -144,6 +144,10 @@ export default function Navbar() {
                     <DropdownMenuItem onClick={() => navigate('/marketplace/orders')}>
                       <Recycle className="w-4 h-4 mr-2" />
                       {language === 'en' ? 'My Orders' : 'طلباتي'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/marketplace/my-listings')}>
+                      <Package className="w-4 h-4 mr-2" />
+                      {language === 'en' ? 'My Listings' : 'إعلاناتي'}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="text-red-600">

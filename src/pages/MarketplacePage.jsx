@@ -100,7 +100,17 @@ const MarketplacePage = () => {
 
       setProducts(productsRes.data.results || productsRes.data || []);
       setMaterials(materialsRes.data.results || materialsRes.data || []);
-      setCategories(categoriesRes.data || []);
+      
+      // Ensure categories is always an array
+      const categoriesData = categoriesRes.data;
+      if (Array.isArray(categoriesData)) {
+        setCategories(categoriesData);
+      } else if (categoriesData?.results && Array.isArray(categoriesData.results)) {
+        setCategories(categoriesData.results);
+      } else {
+        setCategories([]);
+      }
+      
       console.log("State updated successfully");
     } catch (error) {
       console.error("Marketplace fetch error:", error);
@@ -289,30 +299,13 @@ const MarketplacePage = () => {
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center mb-8">
             <div className="flex gap-2 w-full md:w-auto flex-wrap justify-center">
               {isAuthenticated && (
-                <>
-                  <Button
-                    className="bg-orange hover:bg-orange/80 hover:shadow-lg transition-all text-white"
-                    onClick={() => navigate("/marketplace/add-product")}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Product
-                  </Button>
-                  <Button
-                    className="bg-forest hover:bg-forest/80 hover:shadow-lg transition-all text-white"
-                    onClick={() => navigate("/marketplace/add-material")}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Material
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="border-sage/50 hover:bg-sage/30 hover:border-sage transition-colors"
-                    onClick={() => navigate("/marketplace/my-listings")}
-                  >
-                    <Grid3x3 className="w-4 h-4 mr-2" />
-                    My Listings
-                  </Button>
-                </>
+                <Button
+                  className="bg-orange hover:bg-orange/80 hover:shadow-lg transition-all text-white"
+                  onClick={() => navigate("/marketplace/sell")}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Sell Item
+                </Button>
               )}
               <Button
                 variant="outline"
@@ -389,7 +382,7 @@ const MarketplacePage = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((cat) => (
+              {Array.isArray(categories) && categories.map((cat) => (
                 <SelectItem key={cat.id} value={cat.id.toString()}>
                   {cat.name}
                 </SelectItem>
@@ -446,14 +439,14 @@ const MarketplacePage = () => {
                     <div className="flex gap-4 justify-center">
                       <Button
                         className="bg-orange hover:bg-orange/80 text-white"
-                        onClick={() => navigate("/marketplace/add-product")}
+                        onClick={() => navigate("/marketplace/sell?type=product")}
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         Add Your First Product
                       </Button>
                       <Button
                         className="bg-forest hover:bg-forest/80 text-white"
-                        onClick={() => navigate("/marketplace/add-material")}
+                        onClick={() => navigate("/marketplace/sell?type=material")}
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         Add Your First Material

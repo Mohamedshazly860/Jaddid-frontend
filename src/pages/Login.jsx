@@ -20,10 +20,18 @@ export default function Login() {
         password,
       });
 
+      console.log("Login response:", response.data);
       const { token, user } = response.data;
+      console.log("Extracted token:", token);
+      console.log("Extracted user:", user);
 
       login(user, token);
-      navigate("/");
+      
+      // Verify storage immediately
+      console.log("Token in localStorage after login:", localStorage.getItem('token'));
+      console.log("User in localStorage after login:", localStorage.getItem('user'));
+      
+      navigate("/marketplace");
     } catch (error) {
       console.error("Login error:", error);
       const errorMessage = error.response?.data?.detail 

@@ -12,10 +12,12 @@ import NotFound from "./pages/NotFound";
 // Marketplace Pages
 import MarketplacePage from "./pages/MarketplacePage";
 import ProductDetailPage from "./pages/ProductDetailPage";
+import SellItemPage from "./pages/SellItemPage";
 import CartPage from "./pages/CartPage";
 import OrdersPage from "./pages/OrdersPage";
 import FavoritesPage from "./pages/FavoritesPage";
 import MessagesPage from "./pages/MessagesPage";
+import DebugAuthPage from "./pages/DebugAuthPage";
 import "./App.css";
 
 const queryClient = new QueryClient();
@@ -35,10 +37,12 @@ const App = () => (
               {/* Marketplace Routes */}
               <Route path="/marketplace" element={<MarketplacePage />} />
               <Route path="/marketplace/:type/:id" element={<ProductDetailPage />} />
+              <Route path="/marketplace/sell" element={<SellItemPage />} />
               <Route path="/marketplace/cart" element={<CartPage />} />
               <Route path="/marketplace/orders" element={<OrdersPage />} />
               <Route path="/marketplace/favorites" element={<FavoritesPage />} />
               <Route path="/marketplace/messages" element={<MessagesPage />} />
+              <Route path="/debug-auth" element={<DebugAuthPage />} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

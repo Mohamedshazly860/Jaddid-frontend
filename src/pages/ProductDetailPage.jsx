@@ -13,10 +13,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import marketplaceService from '@/services/marketplaceService';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const ProductDetailPage = () => {
   const { type, id } = useParams(); // type: 'product' or 'material'
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [item, setItem] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,6 +56,16 @@ const ProductDetailPage = () => {
   };
 
   const handleAddToCart = async () => {
+    if (!isAuthenticated) {
+      toast({
+        title: 'Login Required',
+        description: 'Please login to add items to cart',
+        variant: 'destructive',
+      });
+      navigate('/login');
+      return;
+    }
+
     try {
       const cartData = type === 'product' 
         ? { product_id: id, quantity: 1 }
@@ -74,6 +86,16 @@ const ProductDetailPage = () => {
   };
 
   const handleToggleFavorite = async () => {
+    if (!isAuthenticated) {
+      toast({
+        title: 'Login Required',
+        description: 'Please login to add items to favorites',
+        variant: 'destructive',
+      });
+      navigate('/login');
+      return;
+    }
+
     try {
       if (type === 'product') {
         await marketplaceService.products.toggleFavorite(id);
