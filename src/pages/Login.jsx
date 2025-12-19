@@ -21,7 +21,9 @@ export default function Login() {
       });
 
       console.log("Login response:", response.data);
-      const { token, user } = response.data;
+      const { tokens, user } = response.data;
+      const token = tokens?.access || tokens?.token || tokens;
+      console.log("Extracted tokens:", tokens);
       console.log("Extracted token:", token);
       console.log("Extracted user:", user);
 

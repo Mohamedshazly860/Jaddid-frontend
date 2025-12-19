@@ -24,46 +24,140 @@ import { toast } from "../hooks/use-toast";
 const SellItemPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { language } = useLanguage();
   const isArabic = language === "ar";
 
-  // Redirect if not logged in
-  if (!user) {
-    navigate("/login");
-    return null;
-  }
-
   const [itemType, setItemType] = useState(searchParams.get("type") === "material" ? "material" : "product");
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
   const [images, setImages] = useState([]);
   const [previewUrls, setPreviewUrls] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [showNewMaterialForm, setShowNewMaterialForm] = useState(false);
-  const [newMaterial, setNewMaterial] = useState({
+  const [showNewCategoryForm, setShowNewCategoryForm] = useState(false);
+  const [newCategory, setNewCategory] = useState({
     name: "",
     name_ar: "",
     description: "",
     description_ar: ""
   });
+  const [showNewMaterialForm, setShowNewMaterialForm] = useState(false);
+  const [newMaterial, setNewMaterial] = useState({
+    name: "",
+    name_ar: "",
+    category: "",
+    description: "",
+    description_ar: ""
+  });
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!isAuthenticated) {
+      toast({
+        title: isArabic ? "يجب تسجيل الدخول" : "Login Required",
+        description: isArabic ? "يرجى تسجيل الدخول لإضافة عناصر للبيع" : "Please login to sell items",
+        variant: "destructive",
+      });
+      navigate("/login");
+    }
+  }, [isAuthenticated, navigate, isArabic]);
 
   // Fetch materials and categories on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoadingData(true);
+        console.log("Fetching materials and categories...");
         const [materialsRes, categoriesRes] = await Promise.all([
           api.get("/marketplace/materials/"),
           api.get("/marketplace/categories/")
         ]);
-        setMaterials(materialsRes.data);
-        setCategories(categoriesRes.data);
+        console.log("Materials response:", materialsRes.data);
+        console.log("Categories response:", categoriesRes.data);
+        
+        const fetchedMaterials = Array.isArray(materialsRes.data?.results) ? materialsRes.data.results : (Array.isArray(materialsRes.data) ? materialsRes.data : []);
+        let fetchedCategories = Array.isArray(categoriesRes.data?.results) ? categoriesRes.data.results : (Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
+        
+        // If no categories from backend, create default categories
+        if (fetchedCategories.length === 0) {
+          console.warn("No categories found in backend. Creating default categories...");
+          
+          const defaultCategories = [
+            { name: "Plastics", name_ar: "بلاستيك", description: "Plastic materials and products", description_ar: "مواد ومنتجات بلاستيكية" },
+            { name: "Paper & Cardboard", name_ar: "ورق وكرتون", description: "Paper and cardboard materials", description_ar: "مواد ورقية وكرتونية" },
+            { name: "Metals", name_ar: "معادن", description: "Metal materials and products", description_ar: "مواد ومنتجات معدنية" },
+            { name: "Glass", name_ar: "زجاج", description: "Glass materials and products", description_ar: "مواد ومنتجات زجاجية" },
+            { name: "Electronics", name_ar: "إلكترونيات", description: "Electronic materials and products", description_ar: "مواد ومنتجات إلكترونية" },
+          ];
+          
+          // Create categories in backend
+          const createdCategories = [];
+          for (const category of defaultCategories) {
+            try {
+              console.log(`Creating category: ${category.name}...`);
+              const response = await api.post("/marketplace/categories/", category);
+              createdCategories.push(response.data);
+              console.log(`✓ Created category: ${category.name}`, response.data);
+            } catch (error) {
+              console.error(`✗ Error creating category ${category.name}:`, error.response?.data || error.message);
+              console.error(`Full error details:`, error.response);
+              // Log each field error
+              if (error.response?.data) {
+                Object.keys(error.response.data).forEach(field => {
+                  console.error(`  ${field}:`, error.response.data[field]);
+                });
+              }
+            }
+          }
+          
+          if (createdCategories.length > 0) {
+            fetchedCategories = createdCategories;
+            toast({
+              title: isArabic ? "تم إنشاء التصنيفات" : "Categories Created",
+              description: isArabic 
+                ? `تم إنشاء ${createdCategories.length} تصنيف في قاعدة البيانات بنجاح`
+                : `Successfully created ${createdCategories.length} categories in the database`,
+              variant: "default",
+            });
+          } else {
+            toast({
+              title: isArabic ? "خطأ في إنشاء التصنيفات" : "Error Creating Categories",
+              description: isArabic 
+                ? "فشل إنشاء التصنيفات الافتراضية. يرجى التواصل مع الإدارة."
+                : "Failed to create default categories. Please contact admin.",
+              variant: "destructive",
+            });
+          }
+        }
+        
+        setMaterials(fetchedMaterials);
+        setCategories(fetchedCategories);
+        
+        // Log final state
+        console.log("✓ Final materials count:", fetchedMaterials.length);
+        console.log("✓ Final categories count:", fetchedCategories.length);
+        console.log("✓ Categories:", fetchedCategories);
       } catch (error) {
         console.error("Error fetching data:", error);
+        console.error("Error details:", error.response?.data);
+        
+        setMaterials([]);
+        setCategories([]);
+        
+        toast({
+          title: isArabic ? "خطأ في تحميل البيانات" : "Error Loading Data",
+          description: isArabic 
+            ? "حدث خطأ في تحميل البيانات. يرجى المحاولة مرة أخرى."
+            : "Error loading data. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingData(false);
       }
     };
     fetchData();
-  }, []);
+  }, [isArabic]);
 
   // Update tab when URL parameter changes
   useEffect(() => {
@@ -147,9 +241,54 @@ const SellItemPage = () => {
     try {
       const formData = new FormData();
       
-      // Add product data
+      // If user selected "new" category option
+      if (showNewCategoryForm && newCategory.name) {
+        // Use the first available category as placeholder (backend requires category field)
+        if (categories.length > 0) {
+          formData.append("category", categories[0].id);
+        }
+        
+        // Add custom category info in description with special marker
+        const customCategoryNote = `
+📋 طلب تصنيف جديد / New Category Request
+────────────────────────────
+اسم التصنيف / Category Name: ${newCategory.name}
+${newCategory.name_ar ? `الاسم بالعربي / Arabic Name: ${newCategory.name_ar}` : ''}
+${newCategory.description ? `الوصف / Description: ${newCategory.description}` : ''}
+${newCategory.description_ar ? `الوصف بالعربي / Arabic Description: ${newCategory.description_ar}` : ''}
+────────────────────────────
+⚠️ يرجى المراجعة والموافقة من الإدارة
+⚠️ Please review and approve by admin
+
+${productData.description ? '\nوصف المنتج الأصلي / Original Product Description:\n' + productData.description : ''}
+        `.trim();
+        
+        formData.append("description", customCategoryNote);
+        console.log("Adding custom category request:", newCategory.name);
+      } else {
+        // Validate category is selected
+        if (!productData.category) {
+          toast({
+            title: isArabic ? "خطأ" : "Error",
+            description: isArabic ? "يرجى اختيار تصنيف" : "Please select a category",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+        formData.append("category", productData.category);
+        
+        // Add product data (except category which is already added)
+        Object.keys(productData).forEach((key) => {
+          if (key !== "category" && productData[key]) {
+            formData.append(key, productData[key]);
+          }
+        });
+      }
+      
+      // Add remaining product data (except description and category)
       Object.keys(productData).forEach((key) => {
-        if (productData[key]) {
+        if (key !== "category" && key !== "description" && productData[key]) {
           formData.append(key, productData[key]);
         }
       });
@@ -159,8 +298,24 @@ const SellItemPage = () => {
         formData.append("uploaded_images", image);
       });
 
-      // Set status as active by default
-      formData.append("status", "active");
+      // Set status as draft if custom category, active otherwise
+      formData.append("status", (showNewCategoryForm && newCategory.name) ? "draft" : "active");
+
+      // Debug: Log FormData contents
+      console.log("=== Product Submission Debug ===");
+      console.log("showNewCategoryForm:", showNewCategoryForm);
+      console.log("newCategory:", newCategory);
+      console.log("productData:", productData);
+      console.log("images count:", images.length);
+      console.log("FormData entries:");
+      for (let pair of formData.entries()) {
+        if (pair[1] instanceof File) {
+          console.log(`  ${pair[0]}: [File] ${pair[1].name} (${pair[1].size} bytes)`);
+        } else {
+          console.log(`  ${pair[0]}: ${pair[1]}`);
+        }
+      }
+      console.log("================================");
 
       const response = await api.post("/marketplace/products/", formData, {
         headers: {
@@ -170,14 +325,31 @@ const SellItemPage = () => {
 
       toast({
         title: isArabic ? "تم!" : "Success!",
-        description: isArabic
-          ? "تم نشر منتجك بنجاح"
-          : "Your product has been listed successfully",
+        description: (showNewCategoryForm && newCategory.name)
+          ? (isArabic
+            ? "تم إرسال طلب التصنيف الجديد للمراجعة. سيتم نشر المنتج بعد موافقة الإدارة."
+            : "New category request submitted for review. Your product will be published after admin approval.")
+          : (isArabic
+            ? "تم نشر منتجك بنجاح"
+            : "Your product has been listed successfully"),
       });
 
       navigate("/marketplace");
     } catch (error) {
       console.error("Product creation error:", error);
+      console.error("Error response:", error.response);
+      console.error("Error response data:", error.response?.data);
+      console.error("Error response status:", error.response?.status);
+      console.error("Error response headers:", error.response?.headers);
+      
+      // Log all validation errors
+      if (error.response?.data) {
+        console.error("=== Backend Validation Errors ===");
+        Object.keys(error.response.data).forEach((field) => {
+          console.error(`${field}:`, error.response.data[field]);
+        });
+      }
+      
       toast({
         title: isArabic ? "خطأ" : "Error",
         description:
@@ -195,52 +367,127 @@ const SellItemPage = () => {
     setLoading(true);
 
     try {
+      console.log("=== Material Submission Debug ===");
+      console.log("showNewMaterialForm:", showNewMaterialForm);
+      console.log("newMaterial:", newMaterial);
+      console.log("materialData:", materialData);
+      console.log("images count:", images.length);
+
+      // If user wants to create new material
+      if (showNewMaterialForm && newMaterial.name && newMaterial.category) {
+        // First, create the material
+        try {
+          const materialResponse = await api.post("/marketplace/materials/", {
+            name: newMaterial.name,
+            name_ar: newMaterial.name_ar,
+            category: newMaterial.category,
+            description: newMaterial.description,
+            description_ar: newMaterial.description_ar,
+          });
+          
+          console.log("Material created:", materialResponse.data);
+          
+          // Use the newly created material ID
+          const newMaterialId = materialResponse.data.id;
+          
+          const formData = new FormData();
+          formData.append("material", newMaterialId);
+          
+          // Add material listing data
+          Object.keys(materialData).forEach((key) => {
+            if (key !== "material" && key !== "custom_material_name" && materialData[key]) {
+              formData.append(key, materialData[key]);
+            }
+          });
+
+          // Add images
+          images.forEach((image) => {
+            formData.append("uploaded_images", image);
+          });
+
+          formData.append("status", "active");
+
+          const listingResponse = await api.post("/marketplace/material-listings/", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+
+          toast({
+            title: isArabic ? "تم!" : "Success!",
+            description: isArabic
+              ? "تم إضافة المادة الخام والإعلان بنجاح"
+              : "Material and listing created successfully",
+          });
+
+          navigate("/marketplace");
+          return;
+        } catch (materialError) {
+          console.error("Material creation error:", materialError);
+          toast({
+            title: isArabic ? "خطأ" : "Error",
+            description: materialError.response?.data?.message || (isArabic ? "فشل إضافة المادة الخام" : "Failed to create material"),
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Regular flow: material already selected
       const formData = new FormData();
       
-      // If user selected "new" material option, add custom material name
-      if (showNewMaterialForm && newMaterial.name) {
-        formData.append("custom_material_name", newMaterial.name);
-        formData.append("notes", `${materialData.notes ? materialData.notes + '\n\n' : ''}Suggested new material: ${newMaterial.name}${newMaterial.description ? '\nDescription: ' + newMaterial.description : ''}`);
-      } else {
-        // Add selected material ID
-        formData.append("material", materialData.material);
+      // Validate material is selected
+      if (!materialData.material) {
+        toast({
+          title: isArabic ? "خطأ" : "Error",
+          description: isArabic ? "يرجى اختيار مادة خام" : "Please select a raw material",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
       }
+      
+      formData.append("material", materialData.material);
+      console.log("Adding material ID:", materialData.material);
       
       // Add material listing data
       Object.keys(materialData).forEach((key) => {
-        if (key !== "material" && key !== "custom_material_name" && materialData[key]) {
+        if (key !== "material" && key !== "custom_material_name" && key !== "notes" && materialData[key]) {
           formData.append(key, materialData[key]);
+          console.log(`FormData: ${key} = ${materialData[key]}`);
         }
       });
 
       // Add images
-      images.forEach((image) => {
+      images.forEach((image, index) => {
         formData.append("uploaded_images", image);
+        console.log(`Image ${index + 1}:`, image.name, image.size);
       });
 
-      // Set status as pending_approval if it's a custom material, active otherwise
-      formData.append("status", showNewMaterialForm ? "pending_approval" : "active");
+      // Set status as active
+      formData.append("status", "active");
+      console.log("Status: active");
 
+      console.log("Sending to backend...");
       const response = await api.post("/marketplace/material-listings/", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
 
+      console.log("Response:", response.data);
+
       toast({
         title: isArabic ? "تم!" : "Success!",
-        description: showNewMaterialForm 
-          ? (isArabic
-              ? "تم إرسال طلبك للمراجعة. سيتم تفعيل المادة بعد الموافقة."
-              : "Your listing has been submitted for review. It will be activated after approval.")
-          : (isArabic
-              ? "تم نشر المادة بنجاح"
-              : "Your material has been listed successfully"),
+        description: isArabic
+          ? "تم نشر المادة بنجاح"
+          : "Your material has been listed successfully",
       });
 
       navigate("/marketplace");
     } catch (error) {
       console.error("Material creation error:", error);
+      console.error("Error response data:", error.response?.data);
+      console.error("Error status:", error.response?.status);
       toast({
         title: isArabic ? "خطأ" : "Error",
         description:
@@ -357,21 +604,42 @@ const SellItemPage = () => {
                         {isArabic ? "التصنيف *" : "Category *"}
                       </Label>
                       <Select
-                        value={productData.category}
-                        onValueChange={(value) =>
-                          setProductData({ ...productData, category: value })
-                        }
-                        required
+                        value={showNewCategoryForm ? "new" : (productData.category || "")}
+                        onValueChange={(value) => {
+                          if (value === "new") {
+                            setShowNewCategoryForm(true);
+                            setProductData({ ...productData, category: "" });
+                          } else {
+                            setShowNewCategoryForm(false);
+                            setProductData({ ...productData, category: value });
+                          }
+                        }}
+                        required={!showNewCategoryForm}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder={isArabic ? "اختر تصنيف" : "Select category"} />
                         </SelectTrigger>
                         <SelectContent>
-                          {categories.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id.toString()}>
-                              {isArabic && cat.name_ar ? cat.name_ar : cat.name}
+                          {loadingData ? (
+                            <SelectItem value="loading" disabled>
+                              {isArabic ? "جاري التحميل..." : "Loading..."}
                             </SelectItem>
-                          ))}
+                          ) : Array.isArray(categories) && categories.length > 0 ? (
+                            <>
+                              {categories.map((cat) => (
+                                <SelectItem key={cat.id} value={cat.id.toString()}>
+                                  {isArabic && cat.name_ar ? cat.name_ar : cat.name}
+                                </SelectItem>
+                              ))}
+                              <SelectItem value="new" className="text-orange font-semibold border-t mt-2 pt-2">
+                                + {isArabic ? "أضف تصنيف جديد" : "Add New Category"}
+                              </SelectItem>
+                            </>
+                          ) : (
+                            <SelectItem value="disabled" disabled>
+                              {isArabic ? "لا توجد تصنيفات متاحة" : "No categories available"}
+                            </SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -409,6 +677,83 @@ const SellItemPage = () => {
                       />
                     </div>
                   </div>
+
+                  {/* New Category Form - Show when "Add New" is selected */}
+                  {showNewCategoryForm && (
+                    <Card className="bg-orange/5 border-orange/30">
+                      <CardHeader>
+                        <CardTitle className="text-sm text-forest">
+                          {isArabic ? "معلومات التصنيف الجديد" : "New Category Information"}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>
+                              {isArabic ? "اسم التصنيف (English) *" : "Category Name (English) *"}
+                            </Label>
+                            <Input
+                              value={newCategory.name}
+                              onChange={(e) =>
+                                setNewCategory({ ...newCategory, name: e.target.value })
+                              }
+                              placeholder="e.g., Textiles, Rubber, Organic Waste"
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>
+                              {isArabic ? "اسم التصنيف (عربي)" : "Category Name (Arabic)"}
+                            </Label>
+                            <Input
+                              value={newCategory.name_ar}
+                              onChange={(e) =>
+                                setNewCategory({ ...newCategory, name_ar: e.target.value })
+                              }
+                              placeholder={isArabic ? "مثال: منسوجات، مطاط، نفايات عضوية" : ""}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>
+                              {isArabic ? "وصف التصنيف (English)" : "Category Description (English)"}
+                            </Label>
+                            <Textarea
+                              value={newCategory.description}
+                              onChange={(e) =>
+                                setNewCategory({ ...newCategory, description: e.target.value })
+                              }
+                              rows={3}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>
+                              {isArabic ? "وصف التصنيف (عربي)" : "Category Description (Arabic)"}
+                            </Label>
+                            <Textarea
+                              value={newCategory.description_ar}
+                              onChange={(e) =>
+                                setNewCategory({ ...newCategory, description_ar: e.target.value })
+                              }
+                              rows={3}
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setShowNewCategoryForm(false);
+                            setNewCategory({ name: "", name_ar: "", description: "", description_ar: "" });
+                          }}
+                          className="w-full"
+                        >
+                          {isArabic ? "إلغاء - اختيار تصنيف موجود" : "Cancel - Select Existing Category"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {/* Condition */}
                   <div className="space-y-2">
@@ -498,7 +843,7 @@ const SellItemPage = () => {
                             <button
                               type="button"
                               onClick={() => removeImage(index)}
-                              className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="absolute top-1 right-1 bg-orange text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                             >
                               <X className="w-4 h-4" />
                             </button>
@@ -543,7 +888,7 @@ const SellItemPage = () => {
                       {isArabic ? "اختر المادة الخام *" : "Select Raw Material *"}
                     </Label>
                     <Select
-                      value={materialData.material}
+                      value={showNewMaterialForm ? "new" : (materialData.material || "")}
                       onValueChange={(value) => {
                         if (value === "new") {
                           setShowNewMaterialForm(true);
@@ -559,14 +904,24 @@ const SellItemPage = () => {
                         <SelectValue placeholder={isArabic ? "اختر مادة خام" : "Select a raw material"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {materials.map((mat) => (
-                          <SelectItem key={mat.id} value={mat.id.toString()}>
-                            {isArabic && mat.name_ar ? mat.name_ar : mat.name}
-                          </SelectItem>
-                        ))}
-                        <SelectItem value="new" className="text-orange font-semibold border-t mt-2 pt-2">
-                          + {isArabic ? "أضف مادة خام جديدة" : "Add New Raw Material"}
-                        </SelectItem>
+                        {Array.isArray(materials) && materials.length > 0 ? (
+                          <>
+                            {materials.map((mat) => (
+                              <SelectItem key={mat.id} value={mat.id.toString()}>
+                                {isArabic && mat.name_ar ? mat.name_ar : mat.name}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="new" className="text-orange font-semibold border-t mt-2 pt-2">
+                              + {isArabic ? "أضف مادة خام جديدة" : "Add New Raw Material"}
+                            </SelectItem>
+                          </>
+                        ) : (
+                          <>
+                            <SelectItem value="new" className="text-orange font-semibold">
+                              + {isArabic ? "أضف مادة خام جديدة" : "Add New Raw Material"}
+                            </SelectItem>
+                          </>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -580,6 +935,31 @@ const SellItemPage = () => {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
+                        {/* Category Selection for New Material */}
+                        <div className="space-y-2">
+                          <Label>
+                            {isArabic ? "التصنيف *" : "Category *"}
+                          </Label>
+                          <Select
+                            value={newMaterial.category}
+                            onValueChange={(value) =>
+                              setNewMaterial({ ...newMaterial, category: value })
+                            }
+                            required
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={isArabic ? "اختر تصنيف" : "Select category"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.isArray(categories) && categories.map((cat) => (
+                                <SelectItem key={cat.id} value={cat.id.toString()}>
+                                  {isArabic && cat.name_ar ? cat.name_ar : cat.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
                         <div className="grid md:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label>
@@ -590,7 +970,7 @@ const SellItemPage = () => {
                               onChange={(e) =>
                                 setNewMaterial({ ...newMaterial, name: e.target.value })
                               }
-                              placeholder="e.g., PET Bottles, Aluminum Cans"
+                              placeholder="e.g., PET Bottles, Cardboard"
                               required
                             />
                           </div>
@@ -603,7 +983,7 @@ const SellItemPage = () => {
                               onChange={(e) =>
                                 setNewMaterial({ ...newMaterial, name_ar: e.target.value })
                               }
-                              placeholder={isArabic ? "مثال: زجاجات بلاستيك، علب ألومنيوم" : ""}
+                              placeholder={isArabic ? "مثال: زجاجات بلاستيك، كرتون" : ""}
                             />
                           </div>
                         </div>
@@ -638,7 +1018,7 @@ const SellItemPage = () => {
                           variant="outline"
                           onClick={() => {
                             setShowNewMaterialForm(false);
-                            setNewMaterial({ name: "", name_ar: "", description: "", description_ar: "" });
+                            setNewMaterial({ name: "", name_ar: "", category: "", description: "", description_ar: "" });
                           }}
                           className="w-full"
                         >
@@ -901,7 +1281,7 @@ const SellItemPage = () => {
                             <button
                               type="button"
                               onClick={() => removeImage(index)}
-                              className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="absolute top-1 right-1 bg-orange text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                             >
                               <X className="w-4 h-4" />
                             </button>

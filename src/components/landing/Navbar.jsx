@@ -1,9 +1,10 @@
 // Jaddid-frontend/src/components/landing/Navbar.jsx
 import { useState } from 'react';
-import { Menu, X, Globe, Recycle, Bell, User, LogOut, UserCircle, Package } from 'lucide-react';
+import { Menu, X, Globe, Recycle, Bell, User, LogOut, UserCircle, Package, ShoppingBag } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { NavLink } from '@/components/NavLink';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 
 
@@ -49,18 +50,27 @@ export default function Navbar() {
 
           {/* Desktop Navigation */}
           <div className={`hidden md:flex items-center gap-8 ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <Link to="/" className="text-forest hover:text-orange transition-colors font-medium">
+            <NavLink 
+              to="/" 
+              className="text-muted-foreground hover:text-orange transition-colors font-medium"
+              activeClassName="text-orange font-semibold"
+            >
               {t('nav.home')}
-            </Link>
-            <Link to="/marketplace" className="text-muted-foreground hover:text-forest transition-colors font-medium">
+            </NavLink>
+            <NavLink 
+              to="/marketplace" 
+              className="text-muted-foreground hover:text-orange transition-colors font-medium"
+              activeClassName="text-orange font-semibold"
+            >
               {t('nav.marketplace')}
-            </Link>
-            <Link to="/marketplace/orders" className="text-muted-foreground hover:text-forest transition-colors font-medium">
-              {t('nav.orders')}
-            </Link>
-            <Link to="/marketplace/favorites" className="text-muted-foreground hover:text-forest transition-colors font-medium">
-              {t('nav.profile')}
-            </Link>
+            </NavLink>
+            <NavLink 
+              to="/services" 
+              className="text-muted-foreground hover:text-orange transition-colors font-medium"
+              activeClassName="text-orange font-semibold"
+            >
+              {language === 'en' ? 'Services' : 'الخدمات'}
+            </NavLink>
           </div>
 
           {/* Actions */}
@@ -137,20 +147,20 @@ export default function Navbar() {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    <DropdownMenuItem onClick={() => navigate('/marketplace/profile')}>
                       <User className="w-4 h-4 mr-2" />
                       {language === 'en' ? 'Profile' : 'الملف الشخصي'}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/marketplace/orders')}>
-                      <Recycle className="w-4 h-4 mr-2" />
-                      {language === 'en' ? 'My Orders' : 'طلباتي'}
-                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/marketplace/my-listings')}>
                       <Package className="w-4 h-4 mr-2" />
-                      {language === 'en' ? 'My Listings' : 'إعلاناتي'}
+                      {language === 'en' ? 'My Listings' : 'قوائمي'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/marketplace/orders')}>
+                      <ShoppingBag className="w-4 h-4 mr-2" />
+                      {language === 'en' ? 'Orders' : 'الطلبات'}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                    <DropdownMenuItem onClick={handleLogout} className="text-orange">
                       <LogOut className="w-4 h-4 mr-2" />
                       {language === 'en' ? 'Logout' : 'تسجيل الخروج'}
                     </DropdownMenuItem>
@@ -182,18 +192,27 @@ export default function Navbar() {
         {isOpen && (
           <div className="md:hidden py-4 border-t border-sage/20 animate-fade-in-up">
             <div className="flex flex-col gap-4">
-              <Link to="/" className="text-foreground font-medium py-2">
+              <NavLink 
+                to="/" 
+                className="text-muted-foreground font-medium py-2"
+                activeClassName="text-orange font-semibold"
+              >
                 {t('nav.home')}
-              </Link>
-              <Link to="/marketplace" className="text-muted-foreground font-medium py-2">
+              </NavLink>
+              <NavLink 
+                to="/marketplace" 
+                className="text-muted-foreground font-medium py-2"
+                activeClassName="text-orange font-semibold"
+              >
                 {t('nav.marketplace')}
-              </Link>
-              <Link to="/marketplace/orders" className="text-muted-foreground font-medium py-2">
-                {t('nav.orders')}
-              </Link>
-              <Link to="/marketplace/favorites" className="text-muted-foreground font-medium py-2">
-                {t('nav.profile')}
-              </Link>
+              </NavLink>
+              <NavLink 
+                to="/services" 
+                className="text-muted-foreground font-medium py-2"
+                activeClassName="text-orange font-semibold"
+              >
+                {language === 'en' ? 'Services' : 'الخدمات'}
+              </NavLink>
 
               {/* Mobile Actions */}
               <div className="flex flex-col gap-4 pt-4 border-t border-sage/20">
@@ -214,12 +233,8 @@ export default function Navbar() {
                         <p className="text-xs text-muted-foreground">{user?.email}</p>
                       </div>
                     </div>
-                    <Button className="btn-secondary w-full" onClick={() => navigate('/profile')}>
-                      <User className="w-4 h-4 mr-2" />
-                      {language === 'en' ? 'Profile' : 'الملف الشخصي'}
-                    </Button>
                     <Button 
-                      className="btn-primary w-full bg-red-600 hover:bg-red-700" 
+                      className="btn-primary w-full bg-orange hover:bg-orange/90" 
                       onClick={handleLogout}
                     >
                       <LogOut className="w-4 h-4 mr-2" />

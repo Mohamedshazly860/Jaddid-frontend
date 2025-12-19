@@ -35,8 +35,11 @@ import Footer from "@/components/landing/Footer";
 import marketplaceService from "@/services/marketplaceService";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const MarketplacePage = () => {
+  const { language } = useLanguage();
+  const isArabic = language === "ar";
   const [products, setProducts] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -45,8 +48,40 @@ const MarketplacePage = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("-created_at");
   const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+
+  // Helper function to add item to cart
+  const handleAddToCart = async (item, itemType) => {
+    if (!user) {
+      toast({
+        title: isArabic ? "يجب تسجيل الدخول" : "Login Required",
+        description: isArabic ? "يرجى تسجيل الدخول لإضافة العناصر إلى السلة" : "Please login to add items to cart",
+        variant: "destructive",
+      });
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const cartData = itemType === 'product' 
+        ? { product_id: item.id, quantity: 1 }
+        : { material_listing_id: item.id, quantity: 1 };
+      
+      await marketplaceService.cart.addItem(cartData);
+      toast({
+        title: isArabic ? "تم الإضافة" : "Success",
+        description: isArabic ? "تمت إضافة العنصر إلى السلة" : "Item added to cart",
+      });
+    } catch (error) {
+      console.error('Cart error:', error);
+      toast({
+        title: isArabic ? "خطأ" : "Error",
+        description: error.response?.data?.detail || (isArabic ? "فشل في إضافة العنصر إلى السلة" : "Failed to add to cart"),
+        variant: "destructive",
+      });
+    }
+  };
 
   console.log("MarketplacePage rendering, loading:", loading);
 
@@ -142,15 +177,27 @@ const MarketplacePage = () => {
     try {
       if (type === "product") {
         await marketplaceService.products.toggleFavorite(id);
+        // Update local state immediately
+        setProducts(prevProducts => 
+          prevProducts.map(p => 
+            p.id === id ? { ...p, is_favorited: !p.is_favorited } : p
+          )
+        );
       } else {
         await marketplaceService.materialListings.toggleFavorite(id);
+        // Update local state immediately
+        setMaterials(prevMaterials => 
+          prevMaterials.map(m => 
+            m.id === id ? { ...m, is_favorited: !m.is_favorited } : m
+          )
+        );
       }
       toast({
         title: "Success",
         description: "Favorite updated successfully",
       });
-      fetchData();
     } catch (error) {
+      console.error('Toggle favorite error:', error);
       toast({
         title: "Error",
         description: "Failed to update favorite",
@@ -159,13 +206,14 @@ const MarketplacePage = () => {
     }
   };
 
-  const ProductCard = ({ item, type = "product" }) => (
+  const ProductCard = ({ item, type = "product" }) => {
+    return (
     <Card className="overflow-hidden hover:shadow-2xl transition-all duration-300 card-hover border-sage/20">
       <div className="relative h-48 bg-gradient-to-br from-cream/50 to-sage/10">
         {item.images && item.images[0] ? (
           <img
             src={item.images[0].image}
-            alt={item.title}
+            alt={type === 'material' && isArabic && item.material?.name_ar ? item.material.name_ar : item.title}
             className="w-full h-full object-cover"
           />
         ) : (
@@ -196,7 +244,11 @@ const MarketplacePage = () => {
       </div>
 
       <CardHeader>
-        <CardTitle className="line-clamp-1 text-forest">{item.title}</CardTitle>
+        <CardTitle className="line-clamp-1 text-forest">
+          {type === 'material' && isArabic && item.material?.name_ar 
+            ? item.material.name_ar 
+            : item.title}
+        </CardTitle>
         <CardDescription className="line-clamp-2">
           {item.description}
         </CardDescription>
@@ -210,7 +262,7 @@ const MarketplacePage = () => {
             </span>
             {type === "material" && (
               <span className="text-sm text-muted-foreground">
-                per {item.unit}
+                {isArabic ? `لكل ${item.unit}` : `per ${item.unit}`}
               </span>
             )}
           </div>
@@ -221,11 +273,13 @@ const MarketplacePage = () => {
               <span>{item.average_rating || "0.0"}</span>
             </div>
             <span>•</span>
-            <span>{item.reviews_count || 0} reviews</span>
+            <span>
+              {item.reviews_count || 0} {isArabic ? 'تقييم' : 'reviews'}
+            </span>
           </div>
 
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>By {item.seller_name}</span>
+            <span>{isArabic ? 'بواسطة' : 'By'} {item.seller_name}</span>
             <Badge variant="outline" className="border-sage/50 text-forest">
               {item.condition}
             </Badge>
@@ -238,33 +292,25 @@ const MarketplacePage = () => {
           asChild
           className="flex-1 bg-forest hover:bg-forest/80 hover:shadow-lg transition-all text-white"
         >
-          <Link to={`/marketplace/${type}/${item.id}`}>View Details</Link>
+          <Link to={`/marketplace/${type}/${item.id}`}>
+            {isArabic ? 'عرض التفاصيل' : 'View Details'}
+          </Link>
         </Button>
         <Button
           variant="outline"
           size="icon"
           className="border-sage/50 hover:bg-sage/30 hover:border-sage transition-colors"
-          onClick={() => {
-            if (!isAuthenticated) {
-              toast({
-                title: "Login Required",
-                description: "Please login to add items to cart",
-                variant: "destructive",
-              });
-              navigate("/login");
-            } else {
-              toast({
-                title: "Coming Soon",
-                description: "Add to cart feature will be available soon",
-              });
-            }
+          onClick={(e) => {
+            e.preventDefault();
+            handleAddToCart(item, type);
           }}
         >
           <ShoppingCart className="w-4 h-4" />
         </Button>
       </CardFooter>
     </Card>
-  );
+    );
+  };
 
   console.log(
     "Rendering MarketplacePage - products:",
@@ -285,13 +331,13 @@ const MarketplacePage = () => {
           <div className="text-center max-w-3xl mx-auto mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-sage/10 text-forest rounded-full text-sm font-semibold mb-4">
               <Leaf className="w-4 h-4" />
-              Sustainable Shopping
+              {isArabic ? 'تسوق مستدام' : 'Sustainable Shopping'}
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-gradient mb-4">
-              Jaddid Marketplace
+            <h1 className={`text-4xl md:text-5xl font-bold text-gradient mb-4 ${isArabic ? 'font-arabic' : ''}`}>
+              {isArabic ? 'سوق جديد' : 'Jaddid Marketplace'}
             </h1>
-            <p className="text-lg text-muted-foreground">
-              Discover eco-friendly products and recycled materials
+            <p className={`text-lg text-muted-foreground ${isArabic ? 'font-arabic' : ''}`}>
+              {isArabic ? 'اكتشف منتجات صديقة للبيئة ومواد معاد تدويرها' : 'Discover eco-friendly products and recycled materials'}
             </p>
           </div>
 
@@ -304,9 +350,21 @@ const MarketplacePage = () => {
                   onClick={() => navigate("/marketplace/sell")}
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Sell Item
+                  {isArabic ? 'بيع عنصر' : 'Sell Item'}
                 </Button>
               )}
+              <Button
+                variant="outline"
+                className="border-sage/50 hover:bg-sage/30 hover:border-sage transition-colors"
+                onClick={() =>
+                  isAuthenticated
+                    ? navigate("/marketplace/my-listings")
+                    : navigate("/login")
+                }
+              >
+                <Package className="w-4 h-4 mr-2" />
+                {isArabic ? 'قوائمي' : 'My Listings'}
+              </Button>
               <Button
                 variant="outline"
                 className="border-sage/50 hover:bg-sage/30 hover:border-sage transition-colors"
@@ -317,7 +375,7 @@ const MarketplacePage = () => {
                 }
               >
                 <Heart className="w-4 h-4 mr-2" />
-                Favorites
+                {isArabic ? 'المفضلة' : 'Favorites'}
               </Button>
               <Button
                 variant="outline"
@@ -329,7 +387,7 @@ const MarketplacePage = () => {
                 }
               >
                 <ShoppingCart className="w-4 h-4 mr-2" />
-                Cart
+                {isArabic ? 'السلة' : 'Cart'}
               </Button>
               <Button
                 variant="outline"
@@ -341,7 +399,7 @@ const MarketplacePage = () => {
                 }
               >
                 <Package className="w-4 h-4 mr-2" />
-                Orders
+                {isArabic ? 'الطلبات' : 'Orders'}
               </Button>
             </div>
           </div>
@@ -355,7 +413,7 @@ const MarketplacePage = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Search products, materials..."
+                placeholder={isArabic ? "ابحث عن منتجات ومواد..." : "Search products, materials..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 border-sage/30 focus:border-sage"
@@ -365,7 +423,7 @@ const MarketplacePage = () => {
               type="submit"
               className="bg-forest hover:bg-forest/80 text-white"
             >
-              Search
+              {isArabic ? "بحث" : "Search"}
             </Button>
           </form>
         </div>
@@ -378,13 +436,13 @@ const MarketplacePage = () => {
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
             <SelectTrigger className="w-full md:w-[200px] border-sage/30">
               <Filter className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="Category" />
+              <SelectValue placeholder={isArabic ? "التصنيف" : "Category"} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
+              <SelectItem value="all">{isArabic ? "كل التصنيفات" : "All Categories"}</SelectItem>
               {Array.isArray(categories) && categories.map((cat) => (
                 <SelectItem key={cat.id} value={cat.id.toString()}>
-                  {cat.name}
+                  {isArabic ? (cat.name_ar || cat.name) : cat.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -392,15 +450,15 @@ const MarketplacePage = () => {
 
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-full md:w-[200px] border-sage/30">
-              <SelectValue placeholder="Sort By" />
+              <SelectValue placeholder={isArabic ? "ترتيب حسب" : "Sort By"} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="-created_at">Newest First</SelectItem>
-              <SelectItem value="created_at">Oldest First</SelectItem>
-              <SelectItem value="price">Price: Low to High</SelectItem>
-              <SelectItem value="-price">Price: High to Low</SelectItem>
+              <SelectItem value="-created_at">{isArabic ? "الأحدث أولاً" : "Newest First"}</SelectItem>
+              <SelectItem value="created_at">{isArabic ? "الأقدم أولاً" : "Oldest First"}</SelectItem>
+              <SelectItem value="price">{isArabic ? "السعر: من الأقل للأعلى" : "Price: Low to High"}</SelectItem>
+              <SelectItem value="-price">{isArabic ? "السعر: من الأعلى للأقل" : "Price: High to Low"}</SelectItem>
               <SelectItem value="-average_rating">
-                Highest Rated
+                {isArabic ? "الأعلى تقييماً" : "Highest Rated"}
               </SelectItem>
             </SelectContent>
           </Select>
@@ -410,18 +468,18 @@ const MarketplacePage = () => {
           <div className="text-center py-20">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-forest"></div>
             <p className="mt-4 text-muted-foreground">
-              Loading marketplace items...
+              {isArabic ? "جاري تحميل المنتجات..." : "Loading marketplace items..."}
             </p>
           </div>
         ) : (
           <Tabs defaultValue="all" className="w-full">
             <TabsList className="grid w-full max-w-md mx-auto grid-cols-3 mb-8">
-              <TabsTrigger value="all">All Items</TabsTrigger>
+              <TabsTrigger value="all">{isArabic ? "كل العناصر" : "All Items"}</TabsTrigger>
               <TabsTrigger value="products">
-                Products ({products.length})
+                {isArabic ? "منتجات" : "Products"} ({products.length})
               </TabsTrigger>
               <TabsTrigger value="materials">
-                Materials ({materials.length})
+                {isArabic ? "مواد خام" : "Materials"} ({materials.length})
               </TabsTrigger>
             </TabsList>
 
@@ -430,10 +488,10 @@ const MarketplacePage = () => {
                 <div className="text-center py-20">
                   <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-xl font-semibold mb-2">
-                    No items found
+                    {isArabic ? "لا توجد عناصر" : "No items found"}
                   </h3>
                   <p className="text-muted-foreground mb-6">
-                    Try adjusting your filters or search terms
+                    {isArabic ? "حاول تعديل الفلاتر أو كلمات البحث" : "Try adjusting your filters or search terms"}
                   </p>
                   {isAuthenticated && (
                     <div className="flex gap-4 justify-center">
@@ -442,14 +500,14 @@ const MarketplacePage = () => {
                         onClick={() => navigate("/marketplace/sell?type=product")}
                       >
                         <Plus className="w-4 h-4 mr-2" />
-                        Add Your First Product
+                        {isArabic ? "أضف منتجك الأول" : "Add Your First Product"}
                       </Button>
                       <Button
                         className="bg-forest hover:bg-forest/80 text-white"
                         onClick={() => navigate("/marketplace/sell?type=material")}
                       >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Your First Material
+                        <Leaf className="w-4 h-4 mr-2" />
+                        {isArabic ? "أضف مادتك الأولى" : "Add Your First Material"}
                       </Button>
                     </div>
                   )}
@@ -458,8 +516,8 @@ const MarketplacePage = () => {
                 <>
                   {products.length > 0 && (
                     <div>
-                      <h2 className="text-2xl font-bold text-forest mb-4">
-                        Products
+                      <h2 className={`text-2xl font-bold text-forest mb-4 ${isArabic ? 'font-arabic' : ''}`}>
+                        {isArabic ? 'المنتجات' : 'Products'}
                       </h2>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {products.map((product) => (
@@ -475,8 +533,8 @@ const MarketplacePage = () => {
 
                   {materials.length > 0 && (
                     <div>
-                      <h2 className="text-2xl font-bold text-forest mb-4">
-                        Materials
+                      <h2 className={`text-2xl font-bold text-forest mb-4 ${isArabic ? 'font-arabic' : ''}`}>
+                        {isArabic ? 'المواد الخام' : 'Materials'}
                       </h2>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {materials.map((material) => (
@@ -498,20 +556,20 @@ const MarketplacePage = () => {
                 <div className="text-center py-20">
                   <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-xl font-semibold mb-2">
-                    No products found
+                    {isArabic ? "لا توجد منتجات" : "No products found"}
                   </h3>
                   <p className="text-muted-foreground mb-6">
                     {isAuthenticated
-                      ? "Be the first to add a product!"
-                      : "Check back later for new products"}
+                      ? (isArabic ? "كن أول من يضيف منتج!" : "Be the first to add a product!")
+                      : (isArabic ? "تفقد لاحقاً للمنتجات الجديدة" : "Check back later for new products")}
                   </p>
                   {isAuthenticated && (
                     <Button
                       className="bg-orange hover:bg-orange/80 text-white"
-                      onClick={() => navigate("/marketplace/add-product")}
+                      onClick={() => navigate("/marketplace/sell?type=product")}
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      Add Product
+                      {isArabic ? "أضف منتج" : "Add Product"}
                     </Button>
                   )}
                 </div>
@@ -533,20 +591,20 @@ const MarketplacePage = () => {
                 <div className="text-center py-20">
                   <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
                   <h3 className="text-xl font-semibold mb-2">
-                    No materials found
+                    {isArabic ? "لا توجد مواد خام" : "No materials found"}
                   </h3>
                   <p className="text-muted-foreground mb-6">
                     {isAuthenticated
-                      ? "Be the first to add a material!"
-                      : "Check back later for new materials"}
+                      ? (isArabic ? "كن أول من يضيف مادة خام!" : "Be the first to add a material!")
+                      : (isArabic ? "تفقد لاحقاً للمواد الجديدة" : "Check back later for new materials")}
                   </p>
                   {isAuthenticated && (
                     <Button
                       className="bg-forest hover:bg-forest/80 text-white"
-                      onClick={() => navigate("/marketplace/add-material")}
+                      onClick={() => navigate("/marketplace/sell?type=material")}
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      Add Material
+                      {isArabic ? "أضف مادة خام" : "Add Material"}
                     </Button>
                   )}
                 </div>

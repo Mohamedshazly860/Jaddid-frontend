@@ -116,9 +116,18 @@ const translations = {
 const LanguageContext = createContext(undefined);
 
 export function LanguageProvider({ children }) {
-  const [language, setLanguage] = useState('en');
+  // Load language from localStorage on initial mount
+  const [language, setLanguage] = useState(() => {
+    const savedLanguage = localStorage.getItem('language');
+    return savedLanguage || 'en';
+  });
   
   const isRTL = language === 'ar';
+
+  // Save language to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('language', language);
+  }, [language]);
 
   useEffect(() => {
     document.documentElement.dir = isRTL ? 'rtl' : 'ltr';

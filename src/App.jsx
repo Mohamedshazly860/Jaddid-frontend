@@ -17,6 +17,8 @@ import CartPage from "./pages/CartPage";
 import OrdersPage from "./pages/OrdersPage";
 import FavoritesPage from "./pages/FavoritesPage";
 import MessagesPage from "./pages/MessagesPage";
+import ServicesPage from "./pages/ServicesPage";
+import MyListingsPage from "./pages/MyListingsPage";
 import DebugAuthPage from "./pages/DebugAuthPage";
 import "./App.css";
 
@@ -33,6 +35,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/services" element={<ServicesPage />} />
               
               {/* Marketplace Routes */}
               <Route path="/marketplace" element={<MarketplacePage />} />
@@ -42,6 +45,7 @@ const App = () => (
               <Route path="/marketplace/orders" element={<OrdersPage />} />
               <Route path="/marketplace/favorites" element={<FavoritesPage />} />
               <Route path="/marketplace/messages" element={<MessagesPage />} />
+              <Route path="/marketplace/my-listings" element={<MyListingsPage />} />
               <Route path="/debug-auth" element={<DebugAuthPage />} />
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

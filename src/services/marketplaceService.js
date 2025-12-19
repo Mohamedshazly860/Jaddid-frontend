@@ -54,10 +54,10 @@ const marketplaceService = {
   // ========== CART ==========
   cart: {
     get: () => api.get('/marketplace/cart/'),
-    addItem: (data) => api.post('/marketplace/cart/', data),
-    updateItem: (itemId, data) => api.patch(`/marketplace/cart/${itemId}/`, data),
-    removeItem: (itemId) => api.delete(`/marketplace/cart/${itemId}/`),
-    clear: () => api.delete('/marketplace/cart/clear/'),
+    addItem: (data) => api.post('/marketplace/cart/add_item/', data),
+    updateItem: (data) => api.post('/marketplace/cart/update_item/', data),
+    removeItem: (data) => api.post('/marketplace/cart/remove_item/', data),
+    clear: () => api.post('/marketplace/cart/clear/'),
   },
 
   // ========== FAVORITES ==========

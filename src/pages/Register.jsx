@@ -110,8 +110,8 @@ export default function Register() {
         
         {/* Error Message Display */}
         {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600 text-sm whitespace-pre-line">{error}</p>
+          <div className="mb-4 p-4 bg-orange/10 border border-orange/30 rounded-lg">
+            <p className="text-orange text-sm whitespace-pre-line">{error}</p>
           </div>
         )}
 

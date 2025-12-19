@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Separator } from '@/components/ui/separator';
 import marketplaceService from '@/services/marketplaceService';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const OrdersPage = () => {
   const [purchases, setPurchases] = useState([]);
@@ -16,6 +17,8 @@ const OrdersPage = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { language } = useLanguage();
+  const isArabic = language === 'ar';
 
   useEffect(() => {
     fetchOrders();
@@ -140,7 +143,7 @@ const OrdersPage = () => {
               {image ? (
                 <img
                   src={image}
-                  alt={itemData.title}
+                  alt={order.material_listing && isArabic && itemData.material?.name_ar ? itemData.material.name_ar : itemData.title}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -151,7 +154,9 @@ const OrdersPage = () => {
             </div>
 
             <div className="flex-1">
-              <p className="font-semibold">{itemData.title}</p>
+              <p className="font-semibold">
+                {order.material_listing && isArabic && itemData.material?.name_ar ? itemData.material.name_ar : itemData.title}
+              </p>
               <p className="text-sm text-gray-600">
                 Quantity: {order.quantity} {order.unit}
               </p>

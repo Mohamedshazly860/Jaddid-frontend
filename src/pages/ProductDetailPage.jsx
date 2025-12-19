@@ -14,11 +14,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import marketplaceService from '@/services/marketplaceService';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const ProductDetailPage = () => {
   const { type, id } = useParams(); // type: 'product' or 'material'
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const { language } = useLanguage();
+  const isArabic = language === 'ar';
   const [item, setItem] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,19 +70,26 @@ const ProductDetailPage = () => {
     }
 
     try {
+      console.log('Adding to cart:', { type, id });
       const cartData = type === 'product' 
         ? { product_id: id, quantity: 1 }
         : { material_listing_id: id, quantity: 1 };
       
-      await marketplaceService.cart.addItem(cartData);
+      console.log('Cart data:', cartData);
+      const response = await marketplaceService.cart.addItem(cartData);
+      console.log('Cart response:', response);
+      
       toast({
         title: 'Success',
         description: 'Item added to cart',
       });
     } catch (error) {
+      console.error('Cart error:', error);
+      console.error('Error response:', error.response);
+      console.error('Error data:', error.response?.data);
       toast({
         title: 'Error',
-        description: error.response?.data?.detail || 'Failed to add to cart',
+        description: error.response?.data?.detail || error.response?.data?.error || error.message || 'Failed to add to cart',
         variant: 'destructive',
       });
     }
@@ -144,6 +154,21 @@ const ProductDetailPage = () => {
 
   const images = item.images || [];
   const currentImage = images[selectedImage]?.image || null;
+  
+  // Helper function to get full image URL
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    // If it's already a full URL, return as-is
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    // If it already starts with /media, prepend the base URL
+    if (imagePath.startsWith('/media')) {
+      return `http://127.0.0.1:8000${imagePath}`;
+    }
+    // Otherwise, assume it needs /media prefix
+    return `http://127.0.0.1:8000/media/${imagePath}`;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -164,8 +189,8 @@ const ProductDetailPage = () => {
             <div className="aspect-square rounded-lg overflow-hidden bg-gradient-to-br from-green-50 to-blue-50">
               {currentImage ? (
                 <img
-                  src={currentImage}
-                  alt={item.title}
+                  src={getImageUrl(currentImage)}
+                  alt={type === 'material' && isArabic && item.material?.name_ar ? item.material.name_ar : item.title}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -185,7 +210,7 @@ const ProductDetailPage = () => {
                       selectedImage === idx ? 'border-green-500' : 'border-gray-200'
                     }`}
                   >
-                    <img src={img.image} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
+                    <img src={getImageUrl(img.image)} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -212,7 +237,9 @@ const ProductDetailPage = () => {
                 </div>
               </div>
               
-              <h1 className="text-3xl font-bold mb-2">{item.title}</h1>
+              <h1 className="text-3xl font-bold mb-2">
+                {type === 'material' && isArabic && item.material?.name_ar ? item.material.name_ar : item.title}
+              </h1>
               <p className="text-gray-600">{item.description}</p>
             </div>
 
