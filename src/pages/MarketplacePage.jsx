@@ -1,4 +1,3 @@
-// Marketplace Home Page - Browse Products & Materials
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -9,6 +8,8 @@ import {
   Filter,
   Star,
   Leaf,
+  Plus,
+  Grid3x3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -286,7 +287,33 @@ const MarketplacePage = () => {
 
           {/* Search & Quick Actions */}
           <div className="flex flex-col md:flex-row gap-4 items-center justify-center mb-8">
-            <div className="flex gap-2 w-full md:w-auto">
+            <div className="flex gap-2 w-full md:w-auto flex-wrap justify-center">
+              {isAuthenticated && (
+                <>
+                  <Button
+                    className="bg-orange hover:bg-orange/80 hover:shadow-lg transition-all text-white"
+                    onClick={() => navigate("/marketplace/add-product")}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Product
+                  </Button>
+                  <Button
+                    className="bg-forest hover:bg-forest/80 hover:shadow-lg transition-all text-white"
+                    onClick={() => navigate("/marketplace/add-material")}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Material
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-sage/50 hover:bg-sage/30 hover:border-sage transition-colors"
+                    onClick={() => navigate("/marketplace/my-listings")}
+                  >
+                    <Grid3x3 className="w-4 h-4 mr-2" />
+                    My Listings
+                  </Button>
+                </>
+              )}
               <Button
                 variant="outline"
                 className="border-sage/50 hover:bg-sage/30 hover:border-sage transition-colors"
@@ -323,216 +350,227 @@ const MarketplacePage = () => {
                 <Package className="w-4 h-4 mr-2" />
                 Orders
               </Button>
-              <Button
-                className="bg-orange hover:bg-orange/80 hover:shadow-lg transition-all text-white"
-                onClick={() => {
-                  if (!isAuthenticated) {
-                    toast({
-                      title: "Login Required",
-                      description: "Please login to list items for sale",
-                      variant: "destructive",
-                    });
-                    navigate("/login");
-                  } else {
-                    toast({
-                      title: "Coming Soon",
-                      description:
-                        "Listing items feature will be available soon",
-                    });
-                  }
-                }}
-              >
-                + Sell Item
-              </Button>
             </div>
           </div>
 
-          {/* Search & Filters */}
-          <div className="flex flex-col md:flex-row gap-4 max-w-4xl mx-auto">
-            <form onSubmit={handleSearch} className="flex-1 flex gap-2">
+          {/* Search Bar */}
+          <form
+            onSubmit={handleSearch}
+            className="flex gap-2 max-w-2xl mx-auto"
+          >
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
+                type="text"
                 placeholder="Search products, materials..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 border-sage/30 focus-visible:ring-forest"
+                className="pl-10 border-sage/30 focus:border-sage"
               />
-              <Button
-                type="submit"
-                className="bg-forest hover:bg-forest/80 hover:shadow-lg transition-all"
-              >
-                <Search className="w-4 h-4 mr-2" />
-                Search
-              </Button>
-            </form>
-
-            <Select
-              value={selectedCategory}
-              onValueChange={setSelectedCategory}
+            </div>
+            <Button
+              type="submit"
+              className="bg-forest hover:bg-forest/80 text-white"
             >
-              <SelectTrigger className="w-full md:w-48 border-sage/30">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories?.results?.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-full md:w-48 border-sage/30">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="-created_at">Newest First</SelectItem>
-                <SelectItem value="created_at">Oldest First</SelectItem>
-                <SelectItem value="price">Price: Low to High</SelectItem>
-                <SelectItem value="-price">Price: High to Low</SelectItem>
-                <SelectItem value="-views_count">Most Viewed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              Search
+            </Button>
+          </form>
         </div>
       </div>
 
-      {/* Content */}
+      {/* Main Content */}
       <div className="container mx-auto px-4 py-12">
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-3 bg-cream/50">
-            <TabsTrigger
-              value="all"
-              className="data-[state=active]:bg-forest data-[state=active]:text-white"
-            >
-              All Items
-            </TabsTrigger>
-            <TabsTrigger
-              value="products"
-              className="data-[state=active]:bg-forest data-[state=active]:text-white"
-            >
-              Products
-            </TabsTrigger>
-            <TabsTrigger
-              value="materials"
-              className="data-[state=active]:bg-forest data-[state=active]:text-white"
-            >
-              Raw Materials
-            </TabsTrigger>
-          </TabsList>
+        {/* Filters */}
+        <div className="flex flex-col md:flex-row gap-4 mb-8">
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="w-full md:w-[200px] border-sage/30">
+              <Filter className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id.toString()}>
+                  {cat.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          <TabsContent value="all" className="mt-8">
-            {loading ? (
-              <div className="text-center py-12">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-sage border-t-forest"></div>
-                <p className="mt-4 text-muted-foreground">
-                  Loading marketplace...
-                </p>
-              </div>
-            ) : [...products, ...materials].length === 0 ? (
-              <div className="text-center py-12">
-                <Package className="w-16 h-16 text-sage/40 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-forest mb-2">
-                  No Items Available
-                </h3>
-                <p className="text-muted-foreground mb-6">
-                  The marketplace is currently empty. Check back soon or be the
-                  first to list an item!
-                </p>
-                <Button
-                  className="bg-orange hover:bg-orange/90"
-                  onClick={() => {
-                    if (!isAuthenticated) {
-                      toast({
-                        title: "Login Required",
-                        description: "Please login to list items for sale",
-                        variant: "destructive",
-                      });
-                      navigate("/login");
-                    } else {
-                      toast({
-                        title: "Coming Soon",
-                        description:
-                          "Listing items feature will be available soon",
-                      });
-                    }
-                  }}
-                >
-                  + List Your First Item
-                </Button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {[...products, ...materials].map((item, idx) => (
-                  <ProductCard
-                    key={`${item.id}-${idx}`}
-                    item={item}
-                    type={item.price_per_unit ? "material" : "product"}
-                  />
-                ))}
-              </div>
-            )}
-          </TabsContent>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-full md:w-[200px] border-sage/30">
+              <SelectValue placeholder="Sort By" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="-created_at">Newest First</SelectItem>
+              <SelectItem value="created_at">Oldest First</SelectItem>
+              <SelectItem value="price">Price: Low to High</SelectItem>
+              <SelectItem value="-price">Price: High to Low</SelectItem>
+              <SelectItem value="-average_rating">
+                Highest Rated
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-          <TabsContent value="products" className="mt-8">
-            {loading ? (
-              <div className="text-center py-12">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-sage border-t-forest"></div>
-                <p className="mt-4 text-muted-foreground">
-                  Loading products...
-                </p>
-              </div>
-            ) : products.length === 0 ? (
-              <div className="text-center py-12">
-                <Package className="w-16 h-16 text-sage/40 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-forest mb-2">
-                  No Products Available
-                </h3>
-                <p className="text-muted-foreground">
-                  No products found. Be the first to sell one!
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {products.map((product) => (
-                  <ProductCard key={product.id} item={product} type="product" />
-                ))}
-              </div>
-            )}
-          </TabsContent>
+        {loading ? (
+          <div className="text-center py-20">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-forest"></div>
+            <p className="mt-4 text-muted-foreground">
+              Loading marketplace items...
+            </p>
+          </div>
+        ) : (
+          <Tabs defaultValue="all" className="w-full">
+            <TabsList className="grid w-full max-w-md mx-auto grid-cols-3 mb-8">
+              <TabsTrigger value="all">All Items</TabsTrigger>
+              <TabsTrigger value="products">
+                Products ({products.length})
+              </TabsTrigger>
+              <TabsTrigger value="materials">
+                Materials ({materials.length})
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="materials" className="mt-8">
-            {loading ? (
-              <div className="text-center py-12">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-sage border-t-forest"></div>
-                <p className="mt-4 text-muted-foreground">
-                  Loading materials...
-                </p>
-              </div>
-            ) : materials.length === 0 ? (
-              <div className="text-center py-12">
-                <Package className="w-16 h-16 text-sage/40 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-forest mb-2">
-                  No Materials Available
-                </h3>
-                <p className="text-muted-foreground">
-                  No raw materials found. List your recyclable materials!
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {materials.map((material) => (
-                  <ProductCard
-                    key={material.id}
-                    item={material}
-                    type="material"
-                  />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="all" className="space-y-8">
+              {products.length === 0 && materials.length === 0 ? (
+                <div className="text-center py-20">
+                  <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">
+                    No items found
+                  </h3>
+                  <p className="text-muted-foreground mb-6">
+                    Try adjusting your filters or search terms
+                  </p>
+                  {isAuthenticated && (
+                    <div className="flex gap-4 justify-center">
+                      <Button
+                        className="bg-orange hover:bg-orange/80 text-white"
+                        onClick={() => navigate("/marketplace/add-product")}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Your First Product
+                      </Button>
+                      <Button
+                        className="bg-forest hover:bg-forest/80 text-white"
+                        onClick={() => navigate("/marketplace/add-material")}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Your First Material
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {products.length > 0 && (
+                    <div>
+                      <h2 className="text-2xl font-bold text-forest mb-4">
+                        Products
+                      </h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {products.map((product) => (
+                          <ProductCard
+                            key={product.id}
+                            item={product}
+                            type="product"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {materials.length > 0 && (
+                    <div>
+                      <h2 className="text-2xl font-bold text-forest mb-4">
+                        Materials
+                      </h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {materials.map((material) => (
+                          <ProductCard
+                            key={material.id}
+                            item={material}
+                            type="material"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </TabsContent>
+
+            <TabsContent value="products">
+              {products.length === 0 ? (
+                <div className="text-center py-20">
+                  <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">
+                    No products found
+                  </h3>
+                  <p className="text-muted-foreground mb-6">
+                    {isAuthenticated
+                      ? "Be the first to add a product!"
+                      : "Check back later for new products"}
+                  </p>
+                  {isAuthenticated && (
+                    <Button
+                      className="bg-orange hover:bg-orange/80 text-white"
+                      onClick={() => navigate("/marketplace/add-product")}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Product
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {products.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      item={product}
+                      type="product"
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="materials">
+              {materials.length === 0 ? (
+                <div className="text-center py-20">
+                  <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">
+                    No materials found
+                  </h3>
+                  <p className="text-muted-foreground mb-6">
+                    {isAuthenticated
+                      ? "Be the first to add a material!"
+                      : "Check back later for new materials"}
+                  </p>
+                  {isAuthenticated && (
+                    <Button
+                      className="bg-forest hover:bg-forest/80 text-white"
+                      onClick={() => navigate("/marketplace/add-material")}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Material
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {materials.map((material) => (
+                    <ProductCard
+                      key={material.id}
+                      item={material}
+                      type="material"
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
 
       <Footer />

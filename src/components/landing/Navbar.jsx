@@ -1,8 +1,18 @@
 // Jaddid-frontend/src/components/landing/Navbar.jsx
 import { useState } from 'react';
-import { Menu, X, Globe, Recycle } from 'lucide-react';
+import { Menu, X, Globe, Recycle, Bell, User, LogOut, UserCircle } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate, Link } from "react-router-dom";
 
 
@@ -11,8 +21,16 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
   const { language, setLanguage, t, isRTL } = useLanguage();
+  const { user, isAuthenticated, logout } = useAuth();
+  const [notificationCount] = useState(3); // يمكن تغييره لاحقاً من API
+
   const toggleLanguage = () => {
     setLanguage(language === 'en' ? 'ar' : 'en');
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
   };
 
   return (
@@ -47,6 +65,7 @@ export default function Navbar() {
 
           {/* Actions */}
           <div className={`hidden md:flex items-center gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            {/* Language Toggle */}
             <button
               onClick={toggleLanguage}
               className="flex items-center gap-2 px-4 py-2 rounded-full border border-sage/30 hover:bg-cream transition-colors"
@@ -55,13 +74,95 @@ export default function Navbar() {
               <span className="font-medium">{language === 'en' ? 'العربية' : 'English'}</span>
             </button>
 
-            <Button className="btn-primary" onClick={() => navigate('/register')}>
-              {t('nav.getStarted')}
-            </Button>
-            <Button className="btn-primary" onClick={() => navigate('/login')}>
-              {language === 'en' ? 'Login' : 'دخول'}
-            </Button>
+            {isAuthenticated ? (
+              <>
+                {/* Notifications */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="relative p-2 rounded-full hover:bg-cream transition-colors">
+                      <Bell className="w-5 h-5 text-forest" />
+                      {notificationCount > 0 && (
+                        <Badge 
+                          className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-orange text-white text-xs"
+                        >
+                          {notificationCount}
+                        </Badge>
+                      )}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80">
+                    <DropdownMenuLabel>
+                      {language === 'en' ? 'Notifications' : 'الإشعارات'}
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <div className="max-h-96 overflow-y-auto">
+                      <DropdownMenuItem>
+                        <div className="flex flex-col gap-1">
+                          <p className="font-medium">New order received</p>
+                          <p className="text-xs text-muted-foreground">2 minutes ago</p>
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <div className="flex flex-col gap-1">
+                          <p className="font-medium">Payment confirmed</p>
+                          <p className="text-xs text-muted-foreground">1 hour ago</p>
+                        </div>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <div className="flex flex-col gap-1">
+                          <p className="font-medium">Product approved</p>
+                          <p className="text-xs text-muted-foreground">3 hours ago</p>
+                        </div>
+                      </DropdownMenuItem>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
+                {/* User Menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-2 px-3 py-2 rounded-full border border-sage/30 hover:bg-cream transition-colors">
+                      <UserCircle className="w-5 h-5 text-forest" />
+                      <span className="font-medium text-sm">
+                        {user?.first_name || user?.email?.split('@')[0]}
+                      </span>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col gap-1">
+                        <p className="font-medium">{user?.first_name} {user?.last_name}</p>
+                        <p className="text-xs text-muted-foreground">{user?.email}</p>
+                        <p className="text-xs text-orange font-medium">{user?.role}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate('/profile')}>
+                      <User className="w-4 h-4 mr-2" />
+                      {language === 'en' ? 'Profile' : 'الملف الشخصي'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/marketplace/orders')}>
+                      <Recycle className="w-4 h-4 mr-2" />
+                      {language === 'en' ? 'My Orders' : 'طلباتي'}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                      <LogOut className="w-4 h-4 mr-2" />
+                      {language === 'en' ? 'Logout' : 'تسجيل الخروج'}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <>
+                <Button className="btn-primary" onClick={() => navigate('/register')}>
+                  {t('nav.getStarted')}
+                </Button>
+                <Button className="btn-primary" onClick={() => navigate('/login')}>
+                  {language === 'en' ? 'Login' : 'دخول'}
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -89,7 +190,9 @@ export default function Navbar() {
               <Link to="/marketplace/favorites" className="text-muted-foreground font-medium py-2">
                 {t('nav.profile')}
               </Link>
-              <div className="flex gap-4 pt-4">
+
+              {/* Mobile Actions */}
+              <div className="flex flex-col gap-4 pt-4 border-t border-sage/20">
                 <button
                   onClick={toggleLanguage}
                   className="flex items-center gap-2 px-4 py-2 rounded-full border border-sage/30"
@@ -97,13 +200,38 @@ export default function Navbar() {
                   <Globe className="w-4 h-4" />
                   <span>{language === 'en' ? 'العربية' : 'English'}</span>
                 </button>
-                
-                <Button className="btn-secondary w-full" onClick={() => navigate('/register')}>
-                  {t('nav.getStarted')}
-                </Button>
-                <Button className="btn-primary w-full" onClick={() => navigate('/login')}>
-                  {language === 'en' ? 'Login' : 'دخول'}
-                </Button>
+
+                {isAuthenticated ? (
+                  <>
+                    <div className="flex items-center gap-2 px-4 py-3 bg-cream rounded-lg">
+                      <UserCircle className="w-5 h-5 text-forest" />
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{user?.first_name} {user?.last_name}</p>
+                        <p className="text-xs text-muted-foreground">{user?.email}</p>
+                      </div>
+                    </div>
+                    <Button className="btn-secondary w-full" onClick={() => navigate('/profile')}>
+                      <User className="w-4 h-4 mr-2" />
+                      {language === 'en' ? 'Profile' : 'الملف الشخصي'}
+                    </Button>
+                    <Button 
+                      className="btn-primary w-full bg-red-600 hover:bg-red-700" 
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      {language === 'en' ? 'Logout' : 'تسجيل الخروج'}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button className="btn-secondary w-full" onClick={() => navigate('/register')}>
+                      {t('nav.getStarted')}
+                    </Button>
+                    <Button className="btn-primary w-full" onClick={() => navigate('/login')}>
+                      {language === 'en' ? 'Login' : 'دخول'}
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>
