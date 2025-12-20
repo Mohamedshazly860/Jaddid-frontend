@@ -109,7 +109,9 @@ const MyListingsPage = () => {
   };
 
   const ItemCard = ({ item, type }) => {
-    const imageUrl = item.images?.[0]?.image;
+    const imageUrl = type === 'product' 
+      ? item.images?.[0]?.image 
+      : (item.images?.[0]?.image || item.primary_image);
     const title = type === 'material' && isArabic && item.material?.name_ar 
       ? item.material.name_ar 
       : item.title;

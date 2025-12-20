@@ -184,8 +184,10 @@ const CartPage = () => {
                     {items.map((item) => {
                       const itemData = item.product || item.material_listing;
                       const itemType = item.product ? 'product' : 'material';
-                      // Get the image path from the first image in the array
-                      const imagePath = itemData?.images?.[0]?.image;
+                      // Get the image path from the first image in the array or primary_image for materials
+                      const imagePath = itemType === 'product'
+                        ? itemData?.images?.[0]?.image
+                        : (itemData?.images?.[0]?.image || itemData?.primary_image);
                       const imageUrl = getImageUrl(imagePath);
 
                       return (

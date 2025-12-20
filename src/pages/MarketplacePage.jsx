@@ -207,15 +207,44 @@ const MarketplacePage = () => {
   };
 
   const ProductCard = ({ item, type = "product" }) => {
+    // Get image based on type
+    let imageUrl = null;
+    if (type === 'product') {
+      // Products have images array with objects containing 'image' field
+      console.log('🔍 PRODUCT:', item.title);
+      console.log('   - Full product object:', item);
+      console.log('   - images array:', item.images);
+      console.log('   - first image:', item.images?.[0]);
+      // Check alternative field names
+      console.log('   - product_images:', item.product_images);
+      console.log('   - primary_image:', item.primary_image);
+      imageUrl = item.images?.[0]?.image || item.product_images?.[0]?.image || item.primary_image;
+      console.log('   - final URL:', imageUrl);
+    } else {
+      // Material listings might have images array OR primary_image field
+      imageUrl = item.images?.[0]?.image || item.primary_image;
+      console.log('📦 Material:', item.title, 'Image URL:', imageUrl);
+    }
+    
     return (
     <Card className="overflow-hidden hover:shadow-2xl transition-all duration-300 card-hover border-sage/20">
       <div className="relative h-48 bg-gradient-to-br from-cream/50 to-sage/10">
-        {item.images && item.images[0] ? (
-          <img
-            src={item.images[0].image}
-            alt={type === 'material' && isArabic && item.material?.name_ar ? item.material.name_ar : item.title}
-            className="w-full h-full object-cover"
-          />
+        {imageUrl ? (
+          <>
+            <img
+              src={imageUrl}
+              alt={type === 'material' && isArabic && item.material?.name_ar ? item.material.name_ar : item.title}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                console.error('❌ Image failed to load:', imageUrl);
+                e.target.style.display = 'none';
+              }}
+              onLoad={() => console.log('✅ Image loaded:', imageUrl)}
+            />
+            <div className="w-full h-full flex items-center justify-center" style={{ display: 'none' }}>
+              <Package className="w-16 h-16 text-sage/40" />
+            </div>
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Package className="w-16 h-16 text-sage/40" />

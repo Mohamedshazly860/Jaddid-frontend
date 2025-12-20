@@ -118,7 +118,10 @@ const OrdersPage = () => {
 
   const OrderCard = ({ order, isSale }) => {
     const itemData = order.product || order.material_listing;
-    const image = itemData?.images?.[0]?.image;
+    const itemType = order.product ? 'product' : 'material';
+    const image = itemType === 'product'
+      ? itemData?.images?.[0]?.image
+      : (itemData?.images?.[0]?.image || itemData?.primary_image);
 
     return (
       <Card className="hover:shadow-lg transition-shadow">

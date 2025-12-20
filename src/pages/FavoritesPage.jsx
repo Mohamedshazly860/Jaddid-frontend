@@ -160,8 +160,10 @@ const FavoritesPage = () => {
             {favorites.map((favorite) => {
               const item = favorite.product || favorite.material_listing;
               const itemType = favorite.product ? 'product' : 'material';
-              // Use direct image path like in MarketplacePage
-              const imageUrl = item?.images?.[0]?.image;
+              // Use direct image path - handle both products and materials
+              const imageUrl = itemType === 'product' 
+                ? item?.images?.[0]?.image 
+                : (item?.images?.[0]?.image || item?.primary_image);
 
               return (
                 <Card key={favorite.id} className="overflow-hidden hover:shadow-lg transition-shadow">

@@ -152,7 +152,9 @@ const ProductDetailPage = () => {
     );
   }
 
-  const images = item.images || [];
+  const images = type === 'product' 
+    ? (item.images || []) 
+    : (item.images || (item.primary_image ? [{ image: item.primary_image }] : []));
   const currentImage = images[selectedImage]?.image || null;
   
   // Helper function to get full image URL
