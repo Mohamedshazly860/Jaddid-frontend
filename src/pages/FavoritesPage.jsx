@@ -66,14 +66,18 @@ const FavoritesPage = () => {
   };
 
   const removeFavorite = async (id) => {
+    // Optimistically update UI immediately
+    setFavorites(prevFavorites => prevFavorites.filter(fav => fav.id !== id));
+    
     try {
       await marketplaceService.favorites.remove(id);
       toast({
         title: isArabic ? 'تمت الإزالة' : 'Removed',
         description: isArabic ? 'تم إزالة العنصر من المفضلات' : 'Item removed from favorites',
       });
-      fetchFavorites();
     } catch (error) {
+      // On error, revert by refetching
+      fetchFavorites();
       toast({
         title: isArabic ? 'خطأ' : 'Error',
         description: isArabic ? 'فشلت إزالة العنصر' : 'Failed to remove favorite',
@@ -160,20 +164,28 @@ const FavoritesPage = () => {
             {favorites.map((favorite) => {
               const item = favorite.product || favorite.material_listing;
               const itemType = favorite.product ? 'product' : 'material';
-              // Use direct image path - handle both products and materials
+              // Handle images for both products and materials
               const imageUrl = itemType === 'product' 
-                ? item?.images?.[0]?.image 
+                ? (item?.images?.[0]?.image || item?.product_images?.[0]?.image || item?.primary_image)
                 : (item?.images?.[0]?.image || item?.primary_image);
+              
+              console.log(`${itemType} in favorites:`, item.title, 'Image:', imageUrl);
 
               return (
                 <Card key={favorite.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                   <div className="relative h-48 bg-gradient-to-br from-green-50 to-blue-50">
                     {imageUrl ? (
-                      <img
-                        src={imageUrl}
-                        alt={itemType === 'material' && isArabic && item.material?.name_ar ? item.material.name_ar : item.title}
-                        className="w-full h-full object-cover"
-                      />
+                      <>
+                        <img
+                          src={imageUrl}
+                          alt={itemType === 'material' && isArabic && item.material?.name_ar ? item.material.name_ar : item.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.error('Image failed to load:', imageUrl);
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      </>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <Package className="w-16 h-16 text-gray-300" />

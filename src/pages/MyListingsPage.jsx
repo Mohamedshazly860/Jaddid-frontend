@@ -86,6 +86,13 @@ const MyListingsPage = () => {
       return;
     }
 
+    // Optimistically update UI immediately
+    if (type === 'product') {
+      setProducts(prev => prev.filter(item => item.id !== id));
+    } else {
+      setMaterials(prev => prev.filter(item => item.id !== id));
+    }
+
     try {
       if (type === 'product') {
         await marketplaceService.products.delete(id);
@@ -97,9 +104,9 @@ const MyListingsPage = () => {
         title: isArabic ? 'تم الحذف' : 'Deleted',
         description: isArabic ? 'تم حذف العنصر بنجاح' : 'Item deleted successfully',
       });
-      
-      fetchMyListings();
     } catch (error) {
+      // On error, revert by refetching
+      fetchMyListings();
       toast({
         title: isArabic ? 'خطأ' : 'Error',
         description: isArabic ? 'فشل حذف العنصر' : 'Failed to delete item',
@@ -110,8 +117,11 @@ const MyListingsPage = () => {
 
   const ItemCard = ({ item, type }) => {
     const imageUrl = type === 'product' 
-      ? item.images?.[0]?.image 
+      ? (item.images?.[0]?.image || item.product_images?.[0]?.image || item.primary_image)
       : (item.images?.[0]?.image || item.primary_image);
+    
+    console.log(`${type} in my listings:`, item.title, 'Image:', imageUrl);
+    
     const title = type === 'material' && isArabic && item.material?.name_ar 
       ? item.material.name_ar 
       : item.title;
@@ -120,11 +130,20 @@ const MyListingsPage = () => {
       <Card className="overflow-hidden hover:shadow-lg transition-shadow">
         <div className="relative h-48 bg-gradient-to-br from-green-50 to-blue-50">
           {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt={title}
-              className="w-full h-full object-cover"
-            />
+            <>
+              <img
+                src={imageUrl}
+                alt={title}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  console.error('Image failed to load:', imageUrl);
+                  e.target.style.display = 'none';
+                }}
+              />
+              <div className="w-full h-full flex items-center justify-center" style={{ display: 'none' }}>
+                <Package className="w-16 h-16 text-gray-300" />
+              </div>
+            </>
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <Package className="w-16 h-16 text-gray-300" />
@@ -180,7 +199,7 @@ const MyListingsPage = () => {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => navigate(`/marketplace/edit/${type}/${item.id}`)}
+            onClick={() => navigate(`/marketplace/sell?edit=${type}&id=${item.id}`)}
           >
             <Edit className="w-4 h-4" />
           </Button>

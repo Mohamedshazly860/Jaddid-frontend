@@ -28,7 +28,12 @@ const SellItemPage = () => {
   const { language } = useLanguage();
   const isArabic = language === "ar";
 
-  const [itemType, setItemType] = useState(searchParams.get("type") === "material" ? "material" : "product");
+  // Check if in edit mode
+  const isEditMode = searchParams.get("edit") && searchParams.get("id");
+  const editType = searchParams.get("edit"); // 'product' or 'material'
+  const editId = searchParams.get("id");
+
+  const [itemType, setItemType] = useState(editType || (searchParams.get("type") === "material" ? "material" : "product"));
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [images, setImages] = useState([]);
@@ -158,6 +163,87 @@ const SellItemPage = () => {
     };
     fetchData();
   }, [isArabic]);
+
+  // Load existing item data if in edit mode
+  useEffect(() => {
+    const loadItemData = async () => {
+      if (!isEditMode) return;
+      
+      try {
+        setLoadingData(true);
+        let response;
+        
+        if (editType === 'product') {
+          response = await api.get(`/marketplace/products/${editId}/`);
+          const product = response.data;
+          
+          setProductData({
+            title: product.title || "",
+            title_ar: product.title_ar || "",
+            description: product.description || "",
+            description_ar: product.description_ar || "",
+            price: product.price || "",
+            quantity: product.quantity || 1,
+            condition: product.condition || "good",
+            location: product.location || "",
+            latitude: product.latitude || "",
+            longitude: product.longitude || "",
+            category: product.category || "",
+          });
+          
+          // Load existing images
+          if (product.images && product.images.length > 0) {
+            const imageUrls = product.images.map(img => img.image);
+            setPreviewUrls(imageUrls);
+          }
+        } else if (editType === 'material') {
+          response = await api.get(`/marketplace/material-listings/${editId}/`);
+          const material = response.data;
+          
+          setMaterialData({
+            material: material.material?.id || "",
+            title: material.title || "",
+            title_ar: material.title_ar || "",
+            description: material.description || "",
+            description_ar: material.description_ar || "",
+            quantity: material.quantity || "",
+            unit: material.unit || "kg",
+            price_per_unit: material.price_per_unit || "",
+            minimum_order_quantity: material.minimum_order_quantity || "",
+            condition: material.condition || "good",
+            location: material.location || "",
+            latitude: material.latitude || "",
+            longitude: material.longitude || "",
+            available_from: material.available_from || "",
+            available_until: material.available_until || "",
+            notes: material.notes || "",
+            custom_material_name: "",
+          });
+          
+          // Load existing image
+          if (material.primary_image) {
+            setPreviewUrls([material.primary_image]);
+          }
+        }
+        
+        toast({
+          title: isArabic ? "تم التحميل" : "Loaded",
+          description: isArabic ? "تم تحميل بيانات العنصر للتعديل" : "Item data loaded for editing",
+        });
+      } catch (error) {
+        console.error("Error loading item data:", error);
+        toast({
+          title: isArabic ? "خطأ" : "Error",
+          description: isArabic ? "فشل تحميل بيانات العنصر" : "Failed to load item data",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingData(false);
+      }
+    };
+    
+    loadItemData();
+  }, [isEditMode, editType, editId, isArabic]);
 
   // Update tab when URL parameter changes
   useEffect(() => {
@@ -317,24 +403,29 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
       }
       console.log("================================");
 
-      const response = await api.post("/marketplace/products/", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      // Use PUT for edit, POST for create
+      const response = isEditMode && editType === 'product'
+        ? await api.put(`/marketplace/products/${editId}/`, formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          })
+        : await api.post("/marketplace/products/", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
 
       toast({
         title: isArabic ? "تم!" : "Success!",
-        description: (showNewCategoryForm && newCategory.name)
-          ? (isArabic
-            ? "تم إرسال طلب التصنيف الجديد للمراجعة. سيتم نشر المنتج بعد موافقة الإدارة."
-            : "New category request submitted for review. Your product will be published after admin approval.")
-          : (isArabic
-            ? "تم نشر منتجك بنجاح"
-            : "Your product has been listed successfully"),
+        description: isEditMode
+          ? (isArabic ? "تم تحديث منتجك بنجاح" : "Your product has been updated successfully")
+          : ((showNewCategoryForm && newCategory.name)
+            ? (isArabic
+              ? "تم إرسال طلب التصنيف الجديد للمراجعة. سيتم نشر المنتج بعد موافقة الإدارة."
+              : "New category request submitted for review. Your product will be published after admin approval.")
+            : (isArabic
+              ? "تم نشر منتجك بنجاح"
+              : "Your product has been listed successfully")),
       });
 
-      navigate("/marketplace");
+      navigate(isEditMode ? "/marketplace/my-listings" : "/marketplace");
     } catch (error) {
       console.error("Product creation error:", error);
       console.error("Error response:", error.response);
@@ -468,22 +559,26 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
       console.log("Status: active");
 
       console.log("Sending to backend...");
-      const response = await api.post("/marketplace/material-listings/", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      
+      // Use PUT for edit, POST for create
+      const response = isEditMode && editType === 'material'
+        ? await api.put(`/marketplace/material-listings/${editId}/`, formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          })
+        : await api.post("/marketplace/material-listings/", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
 
       console.log("Response:", response.data);
 
       toast({
         title: isArabic ? "تم!" : "Success!",
-        description: isArabic
-          ? "تم نشر المادة بنجاح"
-          : "Your material has been listed successfully",
+        description: isEditMode
+          ? (isArabic ? "تم تحديث المادة بنجاح" : "Your material has been updated successfully")
+          : (isArabic ? "تم نشر المادة بنجاح" : "Your material has been listed successfully"),
       });
 
-      navigate("/marketplace");
+      navigate(isEditMode ? "/marketplace/my-listings" : "/marketplace");
     } catch (error) {
       console.error("Material creation error:", error);
       console.error("Error response data:", error.response?.data);
@@ -506,7 +601,9 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
       
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <h1 className="text-4xl font-bold text-forest mb-8 text-center">
-          {isArabic ? "بيع عنصر" : "Sell an Item"}
+          {isEditMode
+            ? (isArabic ? "تعديل العنصر" : "Edit Item")
+            : (isArabic ? "بيع عنصر" : "Sell an Item")}
         </h1>
 
         <Tabs value={itemType} onValueChange={setItemType} className="w-full">
@@ -863,9 +960,9 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                       ? isArabic
                         ? "جاري النشر..."
                         : "Publishing..."
-                      : isArabic
-                      ? "نشر المنتج"
-                      : "Publish Product"}
+                      : isEditMode
+                      ? (isArabic ? "تحديث المنتج" : "Update Product")
+                      : (isArabic ? "نشر المنتج" : "Publish Product")}
                   </Button>
                 </form>
               </CardContent>
@@ -1301,9 +1398,9 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                       ? isArabic
                         ? "جاري النشر..."
                         : "Publishing..."
-                      : isArabic
-                      ? "نشر المادة"
-                      : "Publish Material"}
+                      : isEditMode
+                      ? (isArabic ? "تحديث المادة" : "Update Material")
+                      : (isArabic ? "نشر المادة" : "Publish Material")}
                   </Button>
                 </form>
               </CardContent>

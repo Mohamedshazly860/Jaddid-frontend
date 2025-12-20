@@ -58,23 +58,30 @@ const CartPage = () => {
   const updateQuantity = async (itemId, newQuantity) => {
     if (newQuantity < 1) return;
     
+    // Optimistically update the UI immediately
+    setCart(prevCart => ({
+      ...prevCart,
+      items: prevCart.items.map(item => 
+        item.id === itemId ? { ...item, quantity: newQuantity } : item
+      ),
+      total_price: prevCart.items.reduce((sum, item) => {
+        const quantity = item.id === itemId ? newQuantity : item.quantity;
+        const price = item.product?.price || item.material_listing?.price_per_unit || 0;
+        return sum + (price * quantity);
+      }, 0)
+    }));
+    
     try {
-      console.log('Updating quantity:', { item_id: itemId, quantity: newQuantity });
-      const response = await marketplaceService.cart.updateItem({ item_id: itemId, quantity: newQuantity });
-      console.log('Update response:', response);
-      await fetchCart(); // Wait for cart to refresh
-      toast({
-        title: isArabic ? 'تم التحديث' : 'Updated',
-        description: isArabic ? 'تم تحديث الكمية بنجاح' : 'Quantity updated successfully',
-      });
+      await marketplaceService.cart.updateItem({ item_id: itemId, quantity: newQuantity });
+      // Silently refresh cart data in background without showing loading
+      const response = await marketplaceService.cart.get();
+      setCart(response.data);
     } catch (error) {
-      console.error('Update quantity error:', error);
-      console.error('Error response:', error.response);
-      console.error('Error data:', error.response?.data);
-      console.error('Error status:', error.response?.status);
+      // On error, revert to actual cart state
+      fetchCart();
       toast({
         title: isArabic ? 'خطأ' : 'Error',
-        description: error.response?.data?.error || JSON.stringify(error.response?.data) || (isArabic ? 'فشل تحديث الكمية' : 'Failed to update quantity'),
+        description: error.response?.data?.error || (isArabic ? 'فشل تحديث الكمية' : 'Failed to update quantity'),
         variant: 'destructive',
       });
     }
@@ -184,22 +191,30 @@ const CartPage = () => {
                     {items.map((item) => {
                       const itemData = item.product || item.material_listing;
                       const itemType = item.product ? 'product' : 'material';
-                      // Get the image path from the first image in the array or primary_image for materials
+                      // Handle images for both products and materials
                       const imagePath = itemType === 'product'
-                        ? itemData?.images?.[0]?.image
+                        ? (itemData?.images?.[0]?.image || itemData?.product_images?.[0]?.image || itemData?.primary_image)
                         : (itemData?.images?.[0]?.image || itemData?.primary_image);
                       const imageUrl = getImageUrl(imagePath);
+                      
+                      console.log(`${itemType} in cart:`, itemData.title, 'Image:', imageUrl);
 
                       return (
                         <div key={item.id} className="flex flex-col sm:flex-row gap-4 p-4 border rounded-lg">
                           {/* Image */}
                           <div className="w-full sm:w-24 h-48 sm:h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                             {imageUrl ? (
-                              <img
-                                src={imageUrl}
-                                alt={itemType === 'material' && isArabic && itemData.material?.name_ar ? itemData.material.name_ar : itemData.title}
-                                className="w-full h-full object-cover"
-                              />
+                              <>
+                                <img
+                                  src={imageUrl}
+                                  alt={itemType === 'material' && isArabic && itemData.material?.name_ar ? itemData.material.name_ar : itemData.title}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    console.error('Image failed to load:', imageUrl);
+                                    e.target.style.display = 'none';
+                                  }}
+                                />
+                              </>
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
                                 <Package className="w-8 h-8 text-gray-300" />
