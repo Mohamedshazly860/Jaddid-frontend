@@ -230,7 +230,26 @@ export default function Navbar() {
                   </DropdownMenuTrigger>
 
                   <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onClick={() => navigate("/profile")}>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        // Extract the best-available id from the user object
+                        const authId =
+                          user?.id ||
+                          user?.pk ||
+                          user?.user_id ||
+                          user?.uuid ||
+                          user?.authId ||
+                          user?._id ||
+                          (user?.email && user.email.split("@")[0]);
+
+                        if (authId) {
+                          navigate(`/profile/${authId}`);
+                        } else {
+                          // fallback to generic profile route (will load current user)
+                          navigate("/profile");
+                        }
+                      }}
+                    >
                       <User className="w-4 h-4 mr-2" /> Profile
                     </DropdownMenuItem>
                     <DropdownMenuItem
@@ -390,7 +409,17 @@ export default function Navbar() {
                     <div className="space-y-2">
                       <button
                         onClick={() => {
-                          navigate("/profile");
+                          // Extract the ID from your existing auth context
+                          const authId =
+                            user?.id || user?.pk || user?.user_id || user?.uuid;
+
+                          if (authId) {
+                            // Navigate to the dynamic path, not just "/profile"
+                            navigate(`/profile/${authId}`);
+                          } else {
+                            // Fallback if the user is not logged in
+                            navigate("/login");
+                          }
                           setIsOpen(false);
                         }}
                         className="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-cream"

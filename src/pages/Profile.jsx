@@ -26,7 +26,17 @@ const UserProfile = () => {
   const extractId = (u) => {
     if (!u) return null;
     // Prioritize common backend ID keys
-    const id = u.id || u.pk || u.user_id || u._id || u.uuid || u.sub;
+    const id =
+      u.id ||
+      u.pk ||
+      u.user_id ||
+      u._id ||
+      u.uuid ||
+      u.sub ||
+      u.authId ||
+      u.profileId ||
+      (u.account && u.account.id) ||
+      (u.user && u.user.id);
 
     // If no ID, fallback to email (useful for local testing)
     if (!id && u.email) return u.email.toLowerCase();
