@@ -45,21 +45,34 @@ export default function Navbar() {
       communityService.notifications.getUnreadCount().then((res) => res.data),
     enabled: isAuthenticated,
     refetchInterval: 60000,
+    retry: false,
+    onError: (error) => {
+      console.warn("Failed to fetch notification count:", error);
+    },
   });
 
-  const { data: notifications = [] } = useQuery({
+  const { data: notificationsData } = useQuery({
     queryKey: ["notifications"],
     queryFn: () =>
       communityService.notifications.getAll().then((res) => res.data),
     enabled: isAuthenticated,
+    retry: false,
+    onError: (error) => {
+      console.warn("Failed to fetch notifications:", error);
+    },
   });
 
+  const notifications = notificationsData?.results || [];
   const notificationCount = countData?.count || 0;
 
-  const markAsRead = async (id) => {
-    await communityService.notifications.markAsRead(id);
-    queryClient.invalidateQueries(["notifications"]);
-    queryClient.invalidateQueries(["notifications-count"]);
+  const handleNotificationClick = async (id) => {
+    try {
+      await markAsRead(id);
+      navigate("/notifications");
+    } catch (error) {
+      console.error("Failed to handle notification click:", error);
+      navigate("/notifications");
+    }
   };
 
   /* ========================= */
@@ -151,23 +164,42 @@ export default function Navbar() {
                     <div className="max-h-96 overflow-y-auto">
                       {notifications.length === 0 ? (
                         <div className="p-4 text-center text-sm text-muted-foreground">
+                          <Bell className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
                           {language === "en"
                             ? "No notifications"
                             : "لا توجد إشعارات"}
                         </div>
                       ) : (
-                        notifications.map((n) => (
+                        notifications.slice(0, 5).map((n) => (
                           <DropdownMenuItem
                             key={n.id}
-                            onClick={() => markAsRead(n.id)}
-                            className={`flex flex-col gap-1 ${
-                              !n.is_read ? "bg-cream/60" : ""
+                            onClick={() => handleNotificationClick(n.id)}
+                            className={`flex items-start gap-3 p-3 cursor-pointer hover:bg-cream/50 ${
+                              !n.is_read
+                                ? "bg-orange/10 border-l-2 border-orange"
+                                : ""
                             }`}
                           >
-                            <p className="font-medium">{n.title}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {n.message}
-                            </p>
+                            <div
+                              className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                                !n.is_read ? "bg-orange" : "bg-transparent"
+                              }`}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">
+                                {n.title}
+                              </p>
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {n.message?.length > 60
+                                  ? `${n.message.substring(0, 60)}...`
+                                  : n.message}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {new Date(n.created_at).toLocaleDateString(
+                                  language === "en" ? "en-US" : "ar-EG"
+                                )}
+                              </p>
+                            </div>
                           </DropdownMenuItem>
                         ))
                       )}
@@ -176,9 +208,12 @@ export default function Navbar() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={() => navigate("/notifications")}
-                      className="text-center text-forest font-medium"
+                      className="text-center text-forest font-medium hover:bg-forest/10"
                     >
-                      {language === "en" ? "View all" : "عرض الكل"}
+                      <Bell className="w-4 h-4 mr-2" />
+                      {language === "en"
+                        ? "View all notifications"
+                        : "عرض جميع الإشعارات"}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

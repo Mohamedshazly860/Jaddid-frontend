@@ -41,7 +41,12 @@ export default function Notifications() {
   const hasPrev = data?.previous;
 
   const markRead = useMutation({
-    mutationFn: (id) => communityService.notifications.markAsRead(id),
+    mutationFn: async (ids) => {
+      const idArray = Array.isArray(ids) ? ids : [ids];
+      await Promise.all(
+        idArray.map((id) => communityService.notifications.markAsRead(id))
+      );
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["notifications"] });
       qc.invalidateQueries({ queryKey: ["notifications-count"] });
@@ -70,7 +75,23 @@ export default function Notifications() {
                 <Bell className="w-5 h-5 text-forest" />
                 {language === "en" ? "Notifications" : "الإشعارات"}
               </CardTitle>
-              <Badge variant="secondary">{notifications.length}</Badge>
+              <div className="flex gap-2">
+                {notifications.some((n) => !n.is_read) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      markRead.mutate(
+                        notifications.filter((n) => !n.is_read).map((n) => n.id)
+                      )
+                    }
+                  >
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    {language === "en" ? "Mark all read" : "تحديد الكل كمقروء"}
+                  </Button>
+                )}
+                <Badge variant="secondary">{notifications.length}</Badge>
+              </div>
             </CardHeader>
 
             <CardContent className="p-0">
@@ -84,32 +105,54 @@ export default function Notifications() {
                   notifications.map((n) => (
                     <div
                       key={n.id}
-                      className={`flex justify-between p-4 border-b ${
-                        !n.is_read ? "bg-orange/5" : ""
+                      className={`p-4 border-b last:border-b-0 hover:bg-gray-50 transition-colors ${
+                        !n.is_read ? "bg-orange/5 border-l-4 border-orange" : ""
                       }`}
                     >
-                      <div>
-                        <p
-                          className={`text-sm ${
-                            !n.is_read ? "font-semibold" : ""
-                          }`}
-                        >
-                          {n.message}
-                        </p>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(n.created_at).toLocaleDateString()}
-                        </span>
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1">
+                          {n.title && (
+                            <h4
+                              className={`font-medium mb-1 ${
+                                !n.is_read ? "text-forest" : ""
+                              }`}
+                            >
+                              {n.title}
+                            </h4>
+                          )}
+                          <p
+                            className={`text-sm leading-relaxed ${
+                              !n.is_read
+                                ? "font-medium"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {n.message}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {new Date(n.created_at).toLocaleString(
+                              language === "en" ? "en-US" : "ar-EG",
+                              {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )}
+                          </p>
+                        </div>
+                        {!n.is_read && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => markRead.mutate([n.id])}
+                            className="flex-shrink-0 hover:bg-forest/10"
+                          >
+                            <CheckCircle className="w-4 h-4 text-forest" />
+                          </Button>
+                        )}
                       </div>
-
-                      {!n.is_read && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => markRead.mutate(n.id)}
-                        >
-                          <CheckCircle className="w-4 h-4 text-forest" />
-                        </Button>
-                      )}
                     </div>
                   ))
                 )}
