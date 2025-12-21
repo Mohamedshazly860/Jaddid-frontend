@@ -9,6 +9,7 @@ import Navbar from "../components/landing/Navbar";
 import Footer from "../components/landing/Footer";
 import { useParams, useLocation } from "react-router-dom";
 import userService from "@/services/userService";
+import marketplaceService from "@/services/marketplaceService";
 import { useAuth } from "@/contexts/AuthContext";
 
 const UserProfile = () => {
@@ -114,9 +115,20 @@ const UserProfile = () => {
         // Fetch products, material listings and reviews for this user
         try {
           const uid = normalized.id ?? idToLoad;
+
+          // Build strict params to ensure backend filters by owner only
+          const ownerParams = {
+            owner: uid,
+            user: uid,
+            seller: uid,
+            owner_id: uid,
+            user_id: uid,
+          };
+
           const [prodRes, matRes, revRes] = await Promise.all([
-            userService.getUserProducts(uid),
-            userService.getUserMaterialListings(uid),
+            // Use marketplaceService.getAll with explicit params for strict filtering
+            marketplaceService.products.getAll(ownerParams),
+            marketplaceService.materialListings.getAll(ownerParams),
             userService.getUserReviews(uid),
           ]);
 

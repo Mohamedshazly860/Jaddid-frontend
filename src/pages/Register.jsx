@@ -51,7 +51,7 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      const response = await api.post("/auth/register/", {
+      const response = await api.post("/accounts/register/", {
         first_name: firstName,
         last_name: lastName,
         email: email,
@@ -199,8 +199,7 @@ export default function Register() {
               <SelectValue placeholder="Select Account Type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="user">User</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="Individual">Individual</SelectItem>
             </SelectContent>
           </Select>
           <button
