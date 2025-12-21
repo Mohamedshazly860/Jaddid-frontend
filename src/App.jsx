@@ -20,6 +20,10 @@ import MessagesPage from "./pages/MessagesPage";
 import ServicesPage from "./pages/ServicesPage";
 import MyListingsPage from "./pages/MyListingsPage";
 import DebugAuthPage from "./pages/DebugAuthPage";
+import UserProfile from "./pages/Profile";
+import EditProfile from "./pages/EditProfile";
+// import Navbar from "./components/landing/Navbar";
+// import Footer from "./components/landing/Footer";
 import "./App.css";
 
 const queryClient = new QueryClient();
@@ -36,18 +40,29 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/services" element={<ServicesPage />} />
-              
+              <Route path="/profile/:userId" element={<UserProfile />} />
+              <Route path="/profile/edit" element={<EditProfile />} />
+
               {/* Marketplace Routes */}
               <Route path="/marketplace" element={<MarketplacePage />} />
-              <Route path="/marketplace/:type/:id" element={<ProductDetailPage />} />
+              <Route
+                path="/marketplace/:type/:id"
+                element={<ProductDetailPage />}
+              />
               <Route path="/marketplace/sell" element={<SellItemPage />} />
               <Route path="/marketplace/cart" element={<CartPage />} />
               <Route path="/marketplace/orders" element={<OrdersPage />} />
-              <Route path="/marketplace/favorites" element={<FavoritesPage />} />
+              <Route
+                path="/marketplace/favorites"
+                element={<FavoritesPage />}
+              />
               <Route path="/marketplace/messages" element={<MessagesPage />} />
-              <Route path="/marketplace/my-listings" element={<MyListingsPage />} />
+              <Route
+                path="/marketplace/my-listings"
+                element={<MyListingsPage />}
+              />
               <Route path="/debug-auth" element={<DebugAuthPage />} />
-              
+
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

@@ -28,17 +28,24 @@ export default function Login() {
       console.log("Extracted user:", user);
 
       login(user, token);
-      
+
       // Verify storage immediately
-      console.log("Token in localStorage after login:", localStorage.getItem('token'));
-      console.log("User in localStorage after login:", localStorage.getItem('user'));
-      
-      navigate("/marketplace");
+      console.log(
+        "Token in localStorage after login:",
+        localStorage.getItem("token")
+      );
+      console.log(
+        "User in localStorage after login:",
+        localStorage.getItem("user")
+      );
+
+      navigate("/");
     } catch (error) {
       console.error("Login error:", error);
-      const errorMessage = error.response?.data?.detail 
-        || error.response?.data?.message
-        || "Login failed! Check your credentials.";
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        "Login failed! Check your credentials.";
       alert(errorMessage);
     }
   };

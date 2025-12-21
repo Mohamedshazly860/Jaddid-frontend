@@ -1,10 +1,21 @@
 // Jaddid-frontend/src/components/landing/Navbar.jsx
-import { useState } from 'react';
-import { Menu, X, Globe, Recycle, Bell, User, LogOut, UserCircle, Package, ShoppingBag } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { NavLink } from '@/components/NavLink';
+import { useState } from "react";
+import {
+  Menu,
+  X,
+  Globe,
+  Recycle,
+  Bell,
+  User,
+  LogOut,
+  UserCircle,
+  Package,
+  ShoppingBag,
+} from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { NavLink } from "@/components/NavLink";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,8 +27,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 
-
-
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
@@ -26,12 +35,12 @@ export default function Navbar() {
   const [notificationCount] = useState(3); // يمكن تغييره لاحقاً من API
 
   const toggleLanguage = () => {
-    setLanguage(language === 'en' ? 'ar' : 'en');
+    setLanguage(language === "en" ? "ar" : "en");
   };
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    navigate("/");
   };
 
   return (
@@ -39,49 +48,67 @@ export default function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
-          <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+          <div
+            className={`flex items-center gap-3 ${
+              isRTL ? "flex-row-reverse" : ""
+            }`}
+          >
             <div className="w-12 h-12 bg-forest rounded-xl flex items-center justify-center shadow-lg">
               <Recycle className="w-7 h-7 text-white" />
             </div>
-            <span className={`text-2xl font-bold text-foreground ${isRTL ? 'font-arabic' : 'font-primary'}`}>
-              {isRTL ? 'جدد' : 'Jaddid'}
+            <span
+              className={`text-2xl font-bold text-foreground ${
+                isRTL ? "font-arabic" : "font-primary"
+              }`}
+            >
+              {isRTL ? "جدد" : "Jaddid"}
             </span>
           </div>
 
           {/* Desktop Navigation */}
-          <div className={`hidden md:flex items-center gap-8 ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <NavLink 
-              to="/" 
+          <div
+            className={`hidden md:flex items-center gap-8 ${
+              isRTL ? "flex-row-reverse" : ""
+            }`}
+          >
+            <NavLink
+              to="/"
               className="text-muted-foreground hover:text-orange transition-colors font-medium"
               activeClassName="text-orange font-semibold"
             >
-              {t('nav.home')}
+              {t("nav.home")}
             </NavLink>
-            <NavLink 
-              to="/marketplace" 
+            <NavLink
+              to="/marketplace"
               className="text-muted-foreground hover:text-orange transition-colors font-medium"
               activeClassName="text-orange font-semibold"
             >
-              {t('nav.marketplace')}
+              {t("nav.marketplace")}
             </NavLink>
-            <NavLink 
-              to="/services" 
+            <NavLink
+              to="/services"
               className="text-muted-foreground hover:text-orange transition-colors font-medium"
               activeClassName="text-orange font-semibold"
             >
-              {language === 'en' ? 'Services' : 'الخدمات'}
+              {language === "en" ? "Services" : "الخدمات"}
             </NavLink>
           </div>
 
           {/* Actions */}
-          <div className={`hidden md:flex items-center gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+          <div
+            className={`hidden md:flex items-center gap-4 ${
+              isRTL ? "flex-row-reverse" : ""
+            }`}
+          >
             {/* Language Toggle */}
             <button
               onClick={toggleLanguage}
               className="flex items-center gap-2 px-4 py-2 rounded-full border border-sage/30 hover:bg-cream transition-colors"
             >
               <Globe className="w-4 h-4" />
-              <span className="font-medium">{language === 'en' ? 'العربية' : 'English'}</span>
+              <span className="font-medium">
+                {language === "en" ? "العربية" : "English"}
+              </span>
             </button>
 
             {isAuthenticated ? (
@@ -92,9 +119,7 @@ export default function Navbar() {
                     <button className="relative p-2 rounded-full hover:bg-cream transition-colors">
                       <Bell className="w-5 h-5 text-forest" />
                       {notificationCount > 0 && (
-                        <Badge 
-                          className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-orange text-white text-xs"
-                        >
+                        <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-orange text-white text-xs">
                           {notificationCount}
                         </Badge>
                       )}
@@ -102,26 +127,32 @@ export default function Navbar() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-80">
                     <DropdownMenuLabel>
-                      {language === 'en' ? 'Notifications' : 'الإشعارات'}
+                      {language === "en" ? "Notifications" : "الإشعارات"}
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <div className="max-h-96 overflow-y-auto">
                       <DropdownMenuItem>
                         <div className="flex flex-col gap-1">
                           <p className="font-medium">New order received</p>
-                          <p className="text-xs text-muted-foreground">2 minutes ago</p>
+                          <p className="text-xs text-muted-foreground">
+                            2 minutes ago
+                          </p>
                         </div>
                       </DropdownMenuItem>
                       <DropdownMenuItem>
                         <div className="flex flex-col gap-1">
                           <p className="font-medium">Payment confirmed</p>
-                          <p className="text-xs text-muted-foreground">1 hour ago</p>
+                          <p className="text-xs text-muted-foreground">
+                            1 hour ago
+                          </p>
                         </div>
                       </DropdownMenuItem>
                       <DropdownMenuItem>
                         <div className="flex flex-col gap-1">
                           <p className="font-medium">Product approved</p>
-                          <p className="text-xs text-muted-foreground">3 hours ago</p>
+                          <p className="text-xs text-muted-foreground">
+                            3 hours ago
+                          </p>
                         </div>
                       </DropdownMenuItem>
                     </div>
@@ -134,56 +165,82 @@ export default function Navbar() {
                     <button className="flex items-center gap-2 px-3 py-2 rounded-full border border-sage/30 hover:bg-cream transition-colors">
                       <UserCircle className="w-5 h-5 text-forest" />
                       <span className="font-medium text-sm">
-                        {user?.first_name || user?.email?.split('@')[0]}
+                        {user?.first_name || user?.email?.split("@")[0]}
                       </span>
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuLabel>
                       <div className="flex flex-col gap-1">
-                        <p className="font-medium">{user?.first_name} {user?.last_name}</p>
-                        <p className="text-xs text-muted-foreground">{user?.email}</p>
-                        <p className="text-xs text-orange font-medium">{user?.role}</p>
+                        <p className="font-medium">
+                          {user?.first_name} {user?.last_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {user?.email}
+                        </p>
+                        <p className="text-xs text-orange font-medium">
+                          {user?.role}
+                        </p>
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => navigate('/marketplace/profile')}>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        const profileId =
+                          user?.id ??
+                          user?.user_id ??
+                          user?.pk ??
+                          user?.uuid ??
+                          user?.email?.split("@")[0];
+                        navigate(`/profile/${profileId}`);
+                      }}
+                    >
                       <User className="w-4 h-4 mr-2" />
-                      {language === 'en' ? 'Profile' : 'الملف الشخصي'}
+                      {language === "en" ? "Profile" : "الملف الشخصي"}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/marketplace/my-listings')}>
+                    <DropdownMenuItem
+                      onClick={() => navigate("/marketplace/my-listings")}
+                    >
                       <Package className="w-4 h-4 mr-2" />
-                      {language === 'en' ? 'My Listings' : 'قوائمي'}
+                      {language === "en" ? "My Listings" : "قوائمي"}
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/marketplace/orders')}>
+                    <DropdownMenuItem
+                      onClick={() => navigate("/marketplace/orders")}
+                    >
                       <ShoppingBag className="w-4 h-4 mr-2" />
-                      {language === 'en' ? 'Orders' : 'الطلبات'}
+                      {language === "en" ? "Orders" : "الطلبات"}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="text-orange">
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="text-orange"
+                    >
                       <LogOut className="w-4 h-4 mr-2" />
-                      {language === 'en' ? 'Logout' : 'تسجيل الخروج'}
+                      {language === "en" ? "Logout" : "تسجيل الخروج"}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
             ) : (
               <>
-                <Button className="btn-primary" onClick={() => navigate('/register')}>
-                  {t('nav.getStarted')}
+                <Button
+                  className="btn-primary"
+                  onClick={() => navigate("/register")}
+                >
+                  {t("nav.getStarted")}
                 </Button>
-                <Button className="btn-primary" onClick={() => navigate('/login')}>
-                  {language === 'en' ? 'Login' : 'دخول'}
+                <Button
+                  className="btn-primary"
+                  onClick={() => navigate("/login")}
+                >
+                  {language === "en" ? "Login" : "دخول"}
                 </Button>
               </>
             )}
           </div>
 
           {/* Mobile Menu Button */}
-          <button
-            className="md:hidden p-2"
-            onClick={() => setIsOpen(!isOpen)}
-          >
+          <button className="md:hidden p-2" onClick={() => setIsOpen(!isOpen)}>
             {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
@@ -192,26 +249,26 @@ export default function Navbar() {
         {isOpen && (
           <div className="md:hidden py-4 border-t border-sage/20 animate-fade-in-up">
             <div className="flex flex-col gap-4">
-              <NavLink 
-                to="/" 
+              <NavLink
+                to="/"
                 className="text-muted-foreground font-medium py-2"
                 activeClassName="text-orange font-semibold"
               >
-                {t('nav.home')}
+                {t("nav.home")}
               </NavLink>
-              <NavLink 
-                to="/marketplace" 
+              <NavLink
+                to="/marketplace"
                 className="text-muted-foreground font-medium py-2"
                 activeClassName="text-orange font-semibold"
               >
-                {t('nav.marketplace')}
+                {t("nav.marketplace")}
               </NavLink>
-              <NavLink 
-                to="/services" 
+              <NavLink
+                to="/services"
                 className="text-muted-foreground font-medium py-2"
                 activeClassName="text-orange font-semibold"
               >
-                {language === 'en' ? 'Services' : 'الخدمات'}
+                {language === "en" ? "Services" : "الخدمات"}
               </NavLink>
 
               {/* Mobile Actions */}
@@ -221,7 +278,7 @@ export default function Navbar() {
                   className="flex items-center gap-2 px-4 py-2 rounded-full border border-sage/30"
                 >
                   <Globe className="w-4 h-4" />
-                  <span>{language === 'en' ? 'العربية' : 'English'}</span>
+                  <span>{language === "en" ? "العربية" : "English"}</span>
                 </button>
 
                 {isAuthenticated ? (
@@ -229,25 +286,35 @@ export default function Navbar() {
                     <div className="flex items-center gap-2 px-4 py-3 bg-cream rounded-lg">
                       <UserCircle className="w-5 h-5 text-forest" />
                       <div className="flex-1">
-                        <p className="font-medium text-sm">{user?.first_name} {user?.last_name}</p>
-                        <p className="text-xs text-muted-foreground">{user?.email}</p>
+                        <p className="font-medium text-sm">
+                          {user?.first_name} {user?.last_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {user?.email}
+                        </p>
                       </div>
                     </div>
-                    <Button 
-                      className="btn-primary w-full bg-orange hover:bg-orange/90" 
+                    <Button
+                      className="btn-primary w-full bg-orange hover:bg-orange/90"
                       onClick={handleLogout}
                     >
                       <LogOut className="w-4 h-4 mr-2" />
-                      {language === 'en' ? 'Logout' : 'تسجيل الخروج'}
+                      {language === "en" ? "Logout" : "تسجيل الخروج"}
                     </Button>
                   </>
                 ) : (
                   <>
-                    <Button className="btn-secondary w-full" onClick={() => navigate('/register')}>
-                      {t('nav.getStarted')}
+                    <Button
+                      className="btn-secondary w-full"
+                      onClick={() => navigate("/register")}
+                    >
+                      {t("nav.getStarted")}
                     </Button>
-                    <Button className="btn-primary w-full" onClick={() => navigate('/login')}>
-                      {language === 'en' ? 'Login' : 'دخول'}
+                    <Button
+                      className="btn-primary w-full"
+                      onClick={() => navigate("/login")}
+                    >
+                      {language === "en" ? "Login" : "دخول"}
                     </Button>
                   </>
                 )}
