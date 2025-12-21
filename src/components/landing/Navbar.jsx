@@ -10,12 +10,10 @@ import {
   LogOut,
   UserCircle,
   Package,
-  ShoppingBag,
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { NavLink } from "@/components/NavLink";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,14 +23,44 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import api from "@/services/api";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { language, setLanguage, t, isRTL } = useLanguage();
   const { user, isAuthenticated, logout } = useAuth();
-  const [notificationCount] = useState(3); // يمكن تغييره لاحقاً من API
+
+  /* =========================
+     Notifications Queries
+  ========================== */
+
+  const { data: countData } = useQuery({
+    queryKey: ["notifications-count"],
+    queryFn: () =>
+      api.get("/community/notifications/unread-count/").then((res) => res.data),
+    enabled: isAuthenticated,
+    refetchInterval: 60000,
+  });
+
+  const { data: notifications = [] } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => api.get("/community/notifications/").then((res) => res.data),
+    enabled: isAuthenticated,
+  });
+
+  const notificationCount = countData?.count || 0;
+
+  const markAsRead = async (id) => {
+    await api.post(`/community/notifications/${id}/mark-read/`);
+    queryClient.invalidateQueries(["notifications"]);
+    queryClient.invalidateQueries(["notifications-count"]);
+  };
+
+  /* ========================= */
 
   const toggleLanguage = () => {
     setLanguage(language === "en" ? "ar" : "en");
@@ -44,7 +72,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md border-b border-sage/20">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md border-b border-sage/20 font-primary">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
@@ -57,41 +85,30 @@ export default function Navbar() {
               <Recycle className="w-7 h-7 text-white" />
             </div>
             <span
-              className={`text-2xl font-bold text-foreground ${
-                isRTL ? "font-arabic" : "font-primary"
-              }`}
+              className={`text-2xl font-bold ${isRTL ? "font-arabic" : ""}`}
             >
               {isRTL ? "جدد" : "Jaddid"}
             </span>
           </div>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Nav */}
           <div
             className={`hidden md:flex items-center gap-8 ${
               isRTL ? "flex-row-reverse" : ""
             }`}
           >
-            <NavLink
-              to="/"
-              className="text-muted-foreground hover:text-orange transition-colors font-medium"
-              activeClassName="text-orange font-semibold"
-            >
+            <Link to="/" className="text-forest font-medium">
               {t("nav.home")}
-            </NavLink>
-            <NavLink
-              to="/marketplace"
-              className="text-muted-foreground hover:text-orange transition-colors font-medium"
-              activeClassName="text-orange font-semibold"
-            >
+            </Link>
+            <Link to="/marketplace" className="text-muted-foreground">
               {t("nav.marketplace")}
-            </NavLink>
-            <NavLink
-              to="/services"
-              className="text-muted-foreground hover:text-orange transition-colors font-medium"
-              activeClassName="text-orange font-semibold"
-            >
-              {language === "en" ? "Services" : "الخدمات"}
-            </NavLink>
+            </Link>
+            <Link to="/marketplace/orders" className="text-muted-foreground">
+              {t("nav.orders")}
+            </Link>
+            <Link to="/marketplace/favorites" className="text-muted-foreground">
+              {t("nav.profile")}
+            </Link>
           </div>
 
           {/* Actions */}
@@ -100,228 +117,113 @@ export default function Navbar() {
               isRTL ? "flex-row-reverse" : ""
             }`}
           >
-            {/* Language Toggle */}
             <button
               onClick={toggleLanguage}
-              className="flex items-center gap-2 px-4 py-2 rounded-full border border-sage/30 hover:bg-cream transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-full border border-sage/30"
             >
               <Globe className="w-4 h-4" />
-              <span className="font-medium">
-                {language === "en" ? "العربية" : "English"}
-              </span>
+              {language === "en" ? "العربية" : "English"}
             </button>
 
-            {isAuthenticated ? (
+            {isAuthenticated && (
               <>
-                {/* Notifications */}
+                {/* 🔔 Notifications */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="relative p-2 rounded-full hover:bg-cream transition-colors">
+                    <button className="relative p-2 rounded-full hover:bg-cream">
                       <Bell className="w-5 h-5 text-forest" />
                       {notificationCount > 0 && (
-                        <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-orange text-white text-xs">
+                        <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 bg-orange text-white text-xs">
                           {notificationCount}
                         </Badge>
                       )}
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-80">
+
+                  <DropdownMenuContent align="end" className="w-96">
                     <DropdownMenuLabel>
                       {language === "en" ? "Notifications" : "الإشعارات"}
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
+
                     <div className="max-h-96 overflow-y-auto">
-                      <DropdownMenuItem>
-                        <div className="flex flex-col gap-1">
-                          <p className="font-medium">New order received</p>
-                          <p className="text-xs text-muted-foreground">
-                            2 minutes ago
-                          </p>
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          {language === "en"
+                            ? "No notifications"
+                            : "لا توجد إشعارات"}
                         </div>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <div className="flex flex-col gap-1">
-                          <p className="font-medium">Payment confirmed</p>
-                          <p className="text-xs text-muted-foreground">
-                            1 hour ago
-                          </p>
-                        </div>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <div className="flex flex-col gap-1">
-                          <p className="font-medium">Product approved</p>
-                          <p className="text-xs text-muted-foreground">
-                            3 hours ago
-                          </p>
-                        </div>
-                      </DropdownMenuItem>
+                      ) : (
+                        notifications.map((n) => (
+                          <DropdownMenuItem
+                            key={n.id}
+                            onClick={() => markAsRead(n.id)}
+                            className={`flex flex-col gap-1 ${
+                              !n.is_read ? "bg-cream/60" : ""
+                            }`}
+                          >
+                            <p className="font-medium">{n.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {n.message}
+                            </p>
+                          </DropdownMenuItem>
+                        ))
+                      )}
                     </div>
+
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => navigate("/notifications")}
+                      className="text-center text-forest font-medium"
+                    >
+                      {language === "en" ? "View all" : "عرض الكل"}
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
                 {/* User Menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-2 px-3 py-2 rounded-full border border-sage/30 hover:bg-cream transition-colors">
+                    <button className="flex items-center gap-2 px-3 py-2 rounded-full border border-sage/30">
                       <UserCircle className="w-5 h-5 text-forest" />
-                      <span className="font-medium text-sm">
+                      <span className="text-sm font-medium">
                         {user?.first_name || user?.email?.split("@")[0]}
                       </span>
                     </button>
                   </DropdownMenuTrigger>
+
                   <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel>
-                      <div className="flex flex-col gap-1">
-                        <p className="font-medium">
-                          {user?.first_name} {user?.last_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {user?.email}
-                        </p>
-                        <p className="text-xs text-orange font-medium">
-                          {user?.role}
-                        </p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => {
-                        const profileId =
-                          user?.id ??
-                          user?.user_id ??
-                          user?.pk ??
-                          user?.uuid ??
-                          user?.email?.split("@")[0];
-                        navigate(`/profile/${profileId}`);
-                      }}
-                    >
-                      <User className="w-4 h-4 mr-2" />
-                      {language === "en" ? "Profile" : "الملف الشخصي"}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => navigate("/marketplace/my-listings")}
-                    >
-                      <Package className="w-4 h-4 mr-2" />
-                      {language === "en" ? "My Listings" : "قوائمي"}
+                    <DropdownMenuItem onClick={() => navigate("/profile")}>
+                      <User className="w-4 h-4 mr-2" /> Profile
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => navigate("/marketplace/orders")}
                     >
-                      <ShoppingBag className="w-4 h-4 mr-2" />
-                      {language === "en" ? "Orders" : "الطلبات"}
+                      <Recycle className="w-4 h-4 mr-2" /> My Orders
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => navigate("/marketplace/my-listings")}
+                    >
+                      <Package className="w-4 h-4 mr-2" /> My Listings
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={handleLogout}
-                      className="text-orange"
+                      className="text-red-600"
                     >
-                      <LogOut className="w-4 h-4 mr-2" />
-                      {language === "en" ? "Logout" : "تسجيل الخروج"}
+                      <LogOut className="w-4 h-4 mr-2" /> Logout
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
-            ) : (
-              <>
-                <Button
-                  className="btn-primary"
-                  onClick={() => navigate("/register")}
-                >
-                  {t("nav.getStarted")}
-                </Button>
-                <Button
-                  className="btn-primary"
-                  onClick={() => navigate("/login")}
-                >
-                  {language === "en" ? "Login" : "دخول"}
-                </Button>
-              </>
             )}
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Button */}
           <button className="md:hidden p-2" onClick={() => setIsOpen(!isOpen)}>
-            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {isOpen ? <X /> : <Menu />}
           </button>
         </div>
-
-        {/* Mobile Menu */}
-        {isOpen && (
-          <div className="md:hidden py-4 border-t border-sage/20 animate-fade-in-up">
-            <div className="flex flex-col gap-4">
-              <NavLink
-                to="/"
-                className="text-muted-foreground font-medium py-2"
-                activeClassName="text-orange font-semibold"
-              >
-                {t("nav.home")}
-              </NavLink>
-              <NavLink
-                to="/marketplace"
-                className="text-muted-foreground font-medium py-2"
-                activeClassName="text-orange font-semibold"
-              >
-                {t("nav.marketplace")}
-              </NavLink>
-              <NavLink
-                to="/services"
-                className="text-muted-foreground font-medium py-2"
-                activeClassName="text-orange font-semibold"
-              >
-                {language === "en" ? "Services" : "الخدمات"}
-              </NavLink>
-
-              {/* Mobile Actions */}
-              <div className="flex flex-col gap-4 pt-4 border-t border-sage/20">
-                <button
-                  onClick={toggleLanguage}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full border border-sage/30"
-                >
-                  <Globe className="w-4 h-4" />
-                  <span>{language === "en" ? "العربية" : "English"}</span>
-                </button>
-
-                {isAuthenticated ? (
-                  <>
-                    <div className="flex items-center gap-2 px-4 py-3 bg-cream rounded-lg">
-                      <UserCircle className="w-5 h-5 text-forest" />
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">
-                          {user?.first_name} {user?.last_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {user?.email}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      className="btn-primary w-full bg-orange hover:bg-orange/90"
-                      onClick={handleLogout}
-                    >
-                      <LogOut className="w-4 h-4 mr-2" />
-                      {language === "en" ? "Logout" : "تسجيل الخروج"}
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      className="btn-secondary w-full"
-                      onClick={() => navigate("/register")}
-                    >
-                      {t("nav.getStarted")}
-                    </Button>
-                    <Button
-                      className="btn-primary w-full"
-                      onClick={() => navigate("/login")}
-                    >
-                      {language === "en" ? "Login" : "دخول"}
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </nav>
   );
