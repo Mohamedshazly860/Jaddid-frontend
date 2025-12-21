@@ -127,7 +127,7 @@ export default function Navbar() {
               {language === "en" ? "العربية" : "English"}
             </button>
 
-            {isAuthenticated && (
+            {isAuthenticated ? (
               <>
                 {/* 🔔 Notifications */}
                 <DropdownMenu>
@@ -218,6 +218,22 @@ export default function Navbar() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
+            ) : (
+              <>
+                <Button
+                  onClick={() => navigate("/login")}
+                  variant="outline"
+                  className="px-4 py-2"
+                >
+                  {language === "en" ? "Login" : "تسجيل الدخول"}
+                </Button>
+                <Button
+                  onClick={() => navigate("/register")}
+                  className="px-4 py-2 bg-forest text-white hover:bg-forest/90"
+                >
+                  {language === "en" ? "Register" : "إنشاء حساب"}
+                </Button>
+              </>
             )}
           </div>
 
@@ -269,7 +285,7 @@ export default function Navbar() {
                   {language === "en" ? "العربية" : "English"}
                 </button>
 
-                {isAuthenticated && (
+                {isAuthenticated ? (
                   <>
                     {/* Mobile Notifications */}
                     <div className="mb-4">
@@ -376,6 +392,29 @@ export default function Navbar() {
                       </button>
                     </div>
                   </>
+                ) : (
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => {
+                        navigate("/login");
+                        setIsOpen(false);
+                      }}
+                      className="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-cream border border-sage/30"
+                    >
+                      <User className="w-4 h-4" />
+                      {language === "en" ? "Login" : "تسجيل الدخول"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate("/register");
+                        setIsOpen(false);
+                      }}
+                      className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-forest text-white hover:bg-forest/90"
+                    >
+                      <User className="w-4 h-4" />
+                      {language === "en" ? "Register" : "إنشاء حساب"}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
