@@ -14,7 +14,6 @@ import MarketplacePage from "./pages/MarketplacePage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import SellItemPage from "./pages/SellItemPage";
 import CartPage from "./pages/CartPage";
-import OrdersPage from "./pages/OrdersPage";
 import FavoritesPage from "./pages/FavoritesPage";
 import MessagesPage from "./pages/MessagesPage";
 import ServicesPage from "./pages/ServicesPage";
@@ -24,6 +23,8 @@ import UserProfile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
 import Notifications from "./pages/Notifications";
 import Reviews from "./pages/Reviews";
+import CheckoutPage from './pages/CheckoutPage';
+import OrdersPage from './pages/OrdersPage';
 // import Navbar from "./components/landing/Navbar";
 // import Footer from "./components/landing/Footer";
 import "./App.css";
@@ -54,7 +55,8 @@ const App = () => (
               />
               <Route path="/marketplace/sell" element={<SellItemPage />} />
               <Route path="/marketplace/cart" element={<CartPage />} />
-              <Route path="/marketplace/orders" element={<OrdersPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/orders" element={<OrdersPage />} />
               <Route
                 path="/marketplace/favorites"
                 element={<FavoritesPage />}
