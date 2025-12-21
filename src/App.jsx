@@ -22,6 +22,8 @@ import MyListingsPage from "./pages/MyListingsPage";
 import DebugAuthPage from "./pages/DebugAuthPage";
 import UserProfile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
+import Notifications from "./pages/Notifications";
+import Reviews from "./pages/Reviews";
 // import Navbar from "./components/landing/Navbar";
 // import Footer from "./components/landing/Footer";
 import "./App.css";
@@ -62,6 +64,8 @@ const App = () => (
                 element={<MyListingsPage />}
               />
               <Route path="/debug-auth" element={<DebugAuthPage />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/reviews" element={<Reviews />} />
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

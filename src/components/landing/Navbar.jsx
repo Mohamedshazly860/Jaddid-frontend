@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/services/api";
+import communityService from "@/services/communityService";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -41,21 +42,22 @@ export default function Navbar() {
   const { data: countData } = useQuery({
     queryKey: ["notifications-count"],
     queryFn: () =>
-      api.get("/community/notifications/unread-count/").then((res) => res.data),
+      communityService.notifications.getUnreadCount().then((res) => res.data),
     enabled: isAuthenticated,
     refetchInterval: 60000,
   });
 
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications"],
-    queryFn: () => api.get("/community/notifications/").then((res) => res.data),
+    queryFn: () =>
+      communityService.notifications.getAll().then((res) => res.data),
     enabled: isAuthenticated,
   });
 
   const notificationCount = countData?.count || 0;
 
   const markAsRead = async (id) => {
-    await api.post(`/community/notifications/${id}/mark-read/`);
+    await communityService.notifications.markAsRead(id);
     queryClient.invalidateQueries(["notifications"]);
     queryClient.invalidateQueries(["notifications-count"]);
   };
@@ -224,6 +226,161 @@ export default function Navbar() {
             {isOpen ? <X /> : <Menu />}
           </button>
         </div>
+
+        {/* Mobile Menu */}
+        {isOpen && (
+          <div className="md:hidden bg-background border-t border-sage/20">
+            <div className="px-4 py-6 space-y-4">
+              <Link
+                to="/"
+                className="block text-forest font-medium"
+                onClick={() => setIsOpen(false)}
+              >
+                {t("nav.home")}
+              </Link>
+              <Link
+                to="/marketplace"
+                className="block text-muted-foreground"
+                onClick={() => setIsOpen(false)}
+              >
+                {t("nav.marketplace")}
+              </Link>
+              <Link
+                to="/marketplace/orders"
+                className="block text-muted-foreground"
+                onClick={() => setIsOpen(false)}
+              >
+                {t("nav.orders")}
+              </Link>
+              <Link
+                to="/marketplace/favorites"
+                className="block text-muted-foreground"
+                onClick={() => setIsOpen(false)}
+              >
+                {t("nav.profile")}
+              </Link>
+
+              <div className="border-t border-sage/20 pt-4">
+                <button
+                  onClick={toggleLanguage}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full border border-sage/30 mb-4"
+                >
+                  <Globe className="w-4 h-4" />
+                  {language === "en" ? "العربية" : "English"}
+                </button>
+
+                {isAuthenticated && (
+                  <>
+                    {/* Mobile Notifications */}
+                    <div className="mb-4">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-cream">
+                            <Bell className="w-5 h-5 text-forest" />
+                            <span>
+                              {language === "en"
+                                ? "Notifications"
+                                : "الإشعارات"}
+                            </span>
+                            {notificationCount > 0 && (
+                              <Badge className="bg-orange text-white text-xs">
+                                {notificationCount}
+                              </Badge>
+                            )}
+                          </button>
+                        </DropdownMenuTrigger>
+
+                        <DropdownMenuContent align="start" className="w-80">
+                          <DropdownMenuLabel>
+                            {language === "en" ? "Notifications" : "الإشعارات"}
+                          </DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+
+                          <div className="max-h-64 overflow-y-auto">
+                            {notifications.length === 0 ? (
+                              <div className="p-4 text-center text-sm text-muted-foreground">
+                                {language === "en"
+                                  ? "No notifications"
+                                  : "لا توجد إشعارات"}
+                              </div>
+                            ) : (
+                              notifications.map((n) => (
+                                <DropdownMenuItem
+                                  key={n.id}
+                                  onClick={() => markAsRead(n.id)}
+                                  className={`flex flex-col gap-1 ${
+                                    !n.is_read ? "bg-cream/60" : ""
+                                  }`}
+                                >
+                                  <p className="font-medium">{n.title}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {n.message}
+                                  </p>
+                                </DropdownMenuItem>
+                              ))
+                            )}
+                          </div>
+
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => {
+                              navigate("/notifications");
+                              setIsOpen(false);
+                            }}
+                            className="text-center text-forest font-medium"
+                          >
+                            {language === "en" ? "View all" : "عرض الكل"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {/* Mobile User Menu */}
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => {
+                          navigate("/profile");
+                          setIsOpen(false);
+                        }}
+                        className="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-cream"
+                      >
+                        <User className="w-4 h-4" />
+                        {language === "en" ? "Profile" : "الملف الشخصي"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          navigate("/marketplace/orders");
+                          setIsOpen(false);
+                        }}
+                        className="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-cream"
+                      >
+                        <Recycle className="w-4 h-4" />
+                        {language === "en" ? "My Orders" : "طلباتي"}
+                      </button>
+                      <button
+                        onClick={() => {
+                          navigate("/marketplace/my-listings");
+                          setIsOpen(false);
+                        }}
+                        className="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-cream"
+                      >
+                        <Package className="w-4 h-4" />
+                        {language === "en" ? "My Listings" : "قوائمي"}
+                      </button>
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-red-50 text-red-600"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        {language === "en" ? "Logout" : "تسجيل الخروج"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );
