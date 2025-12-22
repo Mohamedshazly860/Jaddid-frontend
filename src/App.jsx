@@ -20,6 +20,8 @@ import MessagesPage from "./pages/MessagesPage";
 import ServicesPage from "./pages/ServicesPage";
 import MyListingsPage from "./pages/MyListingsPage";
 import DebugAuthPage from "./pages/DebugAuthPage";
+// Chatbot Component
+import ChatbotWidget from "./components/chatbot/ChatbotWidget";
 import "./App.css";
 
 const queryClient = new QueryClient();
@@ -51,6 +53,8 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            {/* Global Chatbot Widget */}
+            <ChatbotWidget />
           </BrowserRouter>
         </TooltipProvider>
       </LanguageProvider>
