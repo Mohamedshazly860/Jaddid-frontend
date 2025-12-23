@@ -118,7 +118,7 @@ export default function Navbar() {
             <Link to="/marketplace" className="text-muted-foreground">
               {t("nav.marketplace")}
             </Link>
-            <Link to="/marketplace/orders" className="text-muted-foreground">
+            <Link to="/orders" className="text-muted-foreground">
               {t("nav.orders")}
             </Link>
             <Link to="/marketplace/favorites" className="text-muted-foreground">

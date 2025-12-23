@@ -23,10 +23,12 @@ import UserProfile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
 import Notifications from "./pages/Notifications";
 import Reviews from "./pages/Reviews";
-import CheckoutPage from './pages/CheckoutPage';
-import OrdersPage from './pages/OrdersPage';
+import CheckoutPage from "./pages/CheckoutPage";
+import OrdersPage from "./pages/OrdersPage";
+import OrderTrackingPage from "./pages/OrderTrackingPage";
 // import Navbar from "./components/landing/Navbar";
 // import Footer from "./components/landing/Footer";
+
 import "./App.css";
 
 const queryClient = new QueryClient();
@@ -57,6 +59,10 @@ const App = () => (
               <Route path="/marketplace/cart" element={<CartPage />} />
               <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/orders" element={<OrdersPage />} />
+              <Route
+                path="/order-tracking/:orderId"
+                element={<OrderTrackingPage />}
+              />
               <Route
                 path="/marketplace/favorites"
                 element={<FavoritesPage />}
