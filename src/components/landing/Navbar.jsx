@@ -1,4 +1,4 @@
-// Jaddid-frontend/src/components/landing/Navbar.jsx
+// // Jaddid-frontend/src/components/landing/Navbar.jsx
 import { useState } from "react";
 import {
   Menu,
@@ -24,8 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate, Link } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import api from "@/services/api";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import communityService from "@/services/communityService";
 
 export default function Navbar() {
@@ -63,11 +62,23 @@ export default function Navbar() {
   });
 
   const notifications = notificationsData?.results || [];
-  const notificationCount = countData?.count || 0;
+  const notificationCount = countData?.unread_count || 0;
+
+  // Mark as read mutation
+  const markAsReadMutation = useMutation({
+    mutationFn: (id) => communityService.notifications.markAsRead(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["notifications"]);
+      queryClient.invalidateQueries(["notifications-count"]);
+    },
+    onError: (error) => {
+      console.error("Failed to mark notification as read:", error);
+    },
+  });
 
   const handleNotificationClick = async (id) => {
     try {
-      await markAsRead(id);
+      await markAsReadMutation.mutateAsync(id);
       navigate("/notifications");
     } catch (error) {
       console.error("Failed to handle notification click:", error);
@@ -187,12 +198,16 @@ export default function Navbar() {
                             />
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm truncate">
-                                {n.title}
+                                {language === "en" ? n.title_en : n.title_ar}
                               </p>
                               <p className="text-xs text-muted-foreground line-clamp-2">
-                                {n.message?.length > 60
-                                  ? `${n.message.substring(0, 60)}...`
-                                  : n.message}
+                                {language === "en"
+                                  ? n.msg_en?.length > 60
+                                    ? `${n.msg_en.substring(0, 60)}...`
+                                    : n.msg_en
+                                  : n.msg_ar?.length > 60
+                                  ? `${n.msg_ar.substring(0, 60)}...`
+                                  : n.msg_ar}
                               </p>
                               <p className="text-xs text-muted-foreground mt-1">
                                 {new Date(n.created_at).toLocaleDateString(
@@ -377,14 +392,31 @@ export default function Navbar() {
                               notifications.map((n) => (
                                 <DropdownMenuItem
                                   key={n.id}
-                                  onClick={() => markAsRead(n.id)}
+                                  onClick={async () => {
+                                    try {
+                                      await markAsReadMutation.mutateAsync(
+                                        n.id
+                                      );
+                                      navigate("/notifications");
+                                      setIsOpen(false);
+                                    } catch (error) {
+                                      console.error(
+                                        "Failed to mark notification:",
+                                        error
+                                      );
+                                    }
+                                  }}
                                   className={`flex flex-col gap-1 ${
                                     !n.is_read ? "bg-cream/60" : ""
                                   }`}
                                 >
-                                  <p className="font-medium">{n.title}</p>
+                                  <p className="font-medium">
+                                    {language === "en"
+                                      ? n.title_en
+                                      : n.title_ar}
+                                  </p>
                                   <p className="text-xs text-muted-foreground">
-                                    {n.message}
+                                    {language === "en" ? n.msg_en : n.msg_ar}
                                   </p>
                                 </DropdownMenuItem>
                               ))
