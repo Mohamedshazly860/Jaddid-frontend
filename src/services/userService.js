@@ -32,6 +32,33 @@ const userService = {
     return tryEndpoints(endpoints);
   },
 
+  // Lookup user by email - useful to resolve seller_id from seller_email
+  getUserByEmail: async (email) => {
+    if (!email) return Promise.resolve(null);
+    const endpoints = [
+      `/accounts/users/?email=${encodeURIComponent(email)}`,
+      `/accounts/users/search/?email=${encodeURIComponent(email)}`,
+      `/accounts/user-by-email/${encodeURIComponent(email)}/`,
+      `/users/?email=${encodeURIComponent(email)}`,
+    ];
+    for (const ep of endpoints) {
+      try {
+        const res = await api.get(ep);
+        // backend may return list or single object
+        if (Array.isArray(res.data)) {
+          if (res.data.length > 0) return res.data[0];
+        } else if (res.data?.results) {
+          if (res.data.results.length > 0) return res.data.results[0];
+        } else if (res.data?.id) {
+          return res.data;
+        }
+      } catch (err) {
+        // try next
+      }
+    }
+    return null;
+  },
+
   updateUser: (id, data) => {
     // support JSON or FormData - let axios set Content-Type for FormData
     return api.patch(`/accounts/users/${id}/`, data);
