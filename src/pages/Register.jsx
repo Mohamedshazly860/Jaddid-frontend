@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../services/api";
+import { useAuth } from "@/contexts/AuthContext";
+import api from "@/services/api";
 import {
   Select,
   SelectContent,
@@ -12,6 +13,7 @@ import "./Register.css";
 
 export default function Register() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -34,7 +36,9 @@ export default function Register() {
 
     // Validation: Check password strength
     if (password.length < 8) {
-      setError("كلمة المرور يجب أن تكون 8 أحرف على الأقل / Password must be at least 8 characters");
+      setError(
+        "كلمة المرور يجب أن تكون 8 أحرف على الأقل / Password must be at least 8 characters"
+      );
       return;
     }
 
@@ -57,27 +61,53 @@ export default function Register() {
       });
 
       console.log("Registration successful:", response.data);
-      alert("تم التسجيل بنجاح! / Registration successful!");
-      navigate("/login");
+
+      // If registration returns tokens, handle login automatically
+      const { tokens, user } = response.data;
+      if (tokens) {
+        const { access, refresh } = tokens;
+        localStorage.setItem("access_token", access);
+        localStorage.setItem("refresh_token", refresh);
+        // Auto-login after registration
+        login(user, access);
+        navigate("/");
+      } else {
+        alert("تم التسجيل بنجاح! / Registration successful!");
+        navigate("/login");
+      }
     } catch (error) {
       console.error("Registration error:", error);
       console.error("Backend Error:", error.response?.data || error.message);
-      
+
       // Handle different error types
       let errorMessage = "";
-      
+
       if (error.response?.data) {
         const data = error.response.data;
-        
+
         // Handle field-specific errors
         if (data.email) {
-          errorMessage = `البريد الإلكتروني: ${Array.isArray(data.email) ? data.email.join(', ') : data.email}`;
+          errorMessage = `البريد الإلكتروني: ${
+            Array.isArray(data.email) ? data.email.join(", ") : data.email
+          }`;
         } else if (data.password) {
-          errorMessage = `كلمة المرور: ${Array.isArray(data.password) ? data.password.join(', ') : data.password}`;
+          errorMessage = `كلمة المرور: ${
+            Array.isArray(data.password)
+              ? data.password.join(", ")
+              : data.password
+          }`;
         } else if (data.first_name) {
-          errorMessage = `الاسم الأول: ${Array.isArray(data.first_name) ? data.first_name.join(', ') : data.first_name}`;
+          errorMessage = `الاسم الأول: ${
+            Array.isArray(data.first_name)
+              ? data.first_name.join(", ")
+              : data.first_name
+          }`;
         } else if (data.last_name) {
-          errorMessage = `الاسم الأخير: ${Array.isArray(data.last_name) ? data.last_name.join(', ') : data.last_name}`;
+          errorMessage = `الاسم الأخير: ${
+            Array.isArray(data.last_name)
+              ? data.last_name.join(", ")
+              : data.last_name
+          }`;
         } else if (data.detail) {
           errorMessage = data.detail;
         } else if (data.message) {
@@ -85,16 +115,20 @@ export default function Register() {
         } else {
           // Collect all error messages
           const errors = Object.entries(data)
-            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
-            .join('\n');
+            .map(
+              ([key, value]) =>
+                `${key}: ${Array.isArray(value) ? value.join(", ") : value}`
+            )
+            .join("\n");
           errorMessage = errors || "فشل التسجيل! / Registration failed!";
         }
       } else if (error.message === "Network Error") {
-        errorMessage = "خطأ في الاتصال بالسيرفر! تأكد من تشغيل السيرفر / Network Error! Check if backend is running";
+        errorMessage =
+          "خطأ في الاتصال بالسيرفر! تأكد من تشغيل السيرفر / Network Error! Check if backend is running";
       } else {
         errorMessage = error.message || "فشل التسجيل! / Registration failed!";
       }
-      
+
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -107,36 +141,35 @@ export default function Register() {
         <h1 className="text-3xl font-bold text-forest mb-6 text-center">
           Create Account
         </h1>
-        
-        {/* Error Message Display */}
-        {error && (
-          <div className="mb-4 p-4 bg-orange/10 border border-orange/30 rounded-lg">
-            <p className="text-orange text-sm whitespace-pre-line">{error}</p>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <input
-            type="text"
-            placeholder="First Name / الاسم الأول"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            className="px-4 py-3 border border-sage/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage focus:border-transparent transition-all bg-white/50"
-            required
-            disabled={isLoading}
-          />
-          <input
-            type="text"
-            placeholder="Last Name / الاسم الأخير"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            className="px-4 py-3 border border-sage/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage focus:border-transparent transition-all bg-white/50"
-            required
-            disabled={isLoading}
-          />
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-4">
+            <input
+              type="text"
+              placeholder="First Name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="px-4 py-3 border border-sage/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage focus:border-transparent transition-all bg-white/50"
+              required
+              disabled={isLoading}
+            />
+            <input
+              type="text"
+              placeholder="Last Name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="px-4 py-3 border border-sage/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage focus:border-transparent transition-all bg-white/50"
+              required
+              disabled={isLoading}
+            />
+          </div>
           <input
             type="email"
-            placeholder="Email / البريد الإلكتروني"
+            placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="px-4 py-3 border border-sage/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage focus:border-transparent transition-all bg-white/50"
@@ -145,72 +178,52 @@ export default function Register() {
           />
           <input
             type="password"
-            placeholder="Password / كلمة المرور (8 أحرف على الأقل)"
+            placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="px-4 py-3 border border-sage/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage focus:border-transparent transition-all bg-white/50"
             required
-            minLength={8}
             disabled={isLoading}
           />
           <input
             type="password"
-            placeholder="Confirm Password / تأكيد كلمة المرور"
+            placeholder="Confirm Password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="px-4 py-3 border border-sage/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage focus:border-transparent transition-all bg-white/50"
             required
             disabled={isLoading}
           />
-          
-          {/* Select Role with Custom Styling */}
-          <Select value={role} onValueChange={setRole} disabled={isLoading} required>
-            <SelectTrigger className="px-4 py-3 h-12 border border-sage/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage focus:border-transparent transition-all bg-white/50 hover:border-sage/50">
-              <SelectValue placeholder="Select Role / اختر نوع الحساب" />
+          <Select value={role} onValueChange={setRole} disabled={isLoading}>
+            <SelectTrigger className="px-4 py-3 border border-sage/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage focus:border-transparent transition-all bg-white/50">
+              <SelectValue placeholder="Select Account Type" />
             </SelectTrigger>
-            <SelectContent className="bg-white border-sage/30 shadow-lg">
-              <SelectItem 
-                value="Individual" 
-                className="cursor-pointer hover:bg-sage/10 focus:bg-sage/20 py-3 px-4"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">👤</span>
-                  <div>
-                    <div className="font-medium">Individual</div>
-                    <div className="text-xs text-muted-foreground">فرد</div>
-                  </div>
-                </div>
-              </SelectItem>
-              <SelectItem 
-                value="Company" 
-                className="cursor-pointer hover:bg-sage/10 focus:bg-sage/20 py-3 px-4"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">🏢</span>
-                  <div>
-                    <div className="font-medium">Company</div>
-                    <div className="text-xs text-muted-foreground">شركة</div>
-                  </div>
-                </div>
-              </SelectItem>
+            <SelectContent>
+              <SelectItem value="Individual">Individual</SelectItem>
             </SelectContent>
           </Select>
-
           <button
             type="submit"
             disabled={isLoading}
-            className="px-4 py-3 bg-orange text-white rounded-lg hover:bg-orange/90 transition-all font-medium shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-3 bg-forest text-white rounded-lg hover:bg-forest/90 disabled:bg-forest/50 disabled:cursor-not-allowed transition-all font-medium shadow-md hover:shadow-lg flex items-center justify-center gap-2"
           >
-            {isLoading ? "جاري التسجيل... / Creating..." : "Create Account / إنشاء حساب"}
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Creating Account...
+              </>
+            ) : (
+              "Register"
+            )}
           </button>
         </form>
         <p className="mt-4 text-center text-muted-foreground">
-          Already have an account? / لديك حساب؟{" "}
+          Already have an account?{" "}
           <span
-            className="text-forest hover:underline cursor-pointer font-medium"
+            className="text-orange hover:underline cursor-pointer font-medium"
             onClick={() => navigate("/login")}
           >
-            Login / تسجيل الدخول
+            Login
           </span>
         </p>
       </div>
