@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useOrderTracking } from "@/hooks/useOrderTracking";
@@ -10,310 +10,185 @@ import OrderTimeline from "@/components/order/OrderTimeline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  ArrowLeft,
-  ArrowRight,
   Loader2,
   Package,
   Truck,
   CheckCircle,
-  Info,
-  Clock,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
-import orderService from "@/services/orderService";
-import { useToast } from "@/hooks/use-toast";
 
 const OrderTrackingPage = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { language } = useLanguage();
   const isArabic = language === "ar";
+
+  // order contains courier_details from your Serializer
   const { order, tracking, loading, error, refetch } =
     useOrderTracking(orderId);
-  const { toast } = useToast();
-  const [processingStatus, setProcessingStatus] = useState(false);
 
-  // Auto-assign courier when status changes to IN_PROGRESS
   const statusStr = (s) => (s ? String(s).toLowerCase() : "");
 
-  const isInProgress = (s) => {
-    const st = statusStr(s || order?.order_status || order?.status);
-    return (
-      st === "in_progress" ||
-      st === "in progress" ||
-      st === "confirmed" ||
-      st === "inprogress"
-    );
-  };
-
-  const isCourierAssigned = (s) => {
-    const st = statusStr(s || order?.order_status || order?.status);
-    return (
-      st === "courier_assigned" ||
-      st === "courier-assigned" ||
-      st === "assigned" ||
-      st.includes("assign")
-    );
-  };
-
-  const isOnTheWay = (s) => {
-    const st = statusStr(s || order?.order_status || order?.status);
-    return (
-      st === "on_the_way" ||
-      st === "on the way" ||
-      st === "on-the-way" ||
-      st === "in_way" ||
-      st === "in-way" ||
-      st.includes("way")
-    );
-  };
-
+  // --- 1. Polling Logic (Live Updates) ---
   useEffect(() => {
-    if (isInProgress(order?.status) && !order?.courier_assignment) {
-      assignCourierAutomatically();
-    }
-  }, [order?.status]);
+    if (!orderId) return;
 
-  // Auto-start delivery after 30 seconds of courier-assigned state
-  useEffect(() => {
-    if (isCourierAssigned(order?.status)) {
-      const timer = setTimeout(() => {
-        startDeliveryAutomatically();
-      }, 30000);
-      return () => clearTimeout(timer);
-    }
-  }, [order?.status]);
-
-  const assignCourierAutomatically = async () => {
-    if (processingStatus) return;
-    setProcessingStatus(true);
-    try {
-      await orderService.assignCourier(orderId);
-      toast({
-        title: isArabic ? "تم تعيين السائق" : "Courier Assigned",
-        description: isArabic
-          ? "تم تعيين سائق لطلبك"
-          : "A courier has been assigned to your order",
-      });
-      refetch();
-    } catch (err) {
-      console.error("Failed to assign courier:", err);
-    } finally {
-      setProcessingStatus(false);
-    }
-  };
-
-  const startDeliveryAutomatically = async () => {
-    if (processingStatus) return;
-    setProcessingStatus(true);
-    try {
-      const assignmentId = order?.courier_assignment?.id;
-      if (assignmentId) {
-        await orderService.startDelivery(assignmentId);
-        toast({
-          title: isArabic ? "بدأ التوصيل" : "Delivery Started",
-          description: isArabic
-            ? "السائق في الطريق إليك"
-            : "Courier is on the way",
-        });
+    // Refresh every 5 seconds to track the courier's movement/status
+    const interval = setInterval(() => {
+      const st = statusStr(order?.order_status);
+      if (st === "delivered" || st === "completed") {
+        clearInterval(interval);
+      } else {
         refetch();
       }
-    } catch (err) {
-      console.error("Failed to start delivery:", err);
-    } finally {
-      setProcessingStatus(false);
-    }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [orderId, order?.order_status, refetch]);
+
+  // --- 2. Progress Calculation ---
+  const getProgressPercentage = () => {
+    const s = statusStr(order?.order_status);
+    if (s === "delivered" || s === "completed") return 100;
+    // If status contains shipping/way, the truck is moving
+    if (s.includes("way") || s.includes("shipping") || s === "shipped")
+      return 85;
+    // Since you said it's assigned immediately, we are at 65% minimum if not delivered
+    if (order?.courier_details || s.includes("assign")) return 65;
+    return 25;
   };
 
-  if (loading) {
+  const progressWidth = getProgressPercentage();
+
+  if (loading)
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navbar />
-        <div className="flex-1 flex flex-col items-center justify-center space-y-4">
-          <Loader2 className="w-12 h-12 text-[#708A58] animate-spin" />
-          <p className="text-gray-600 font-medium">
-            {isArabic
-              ? "جاري تحميل معلومات الطلب..."
-              : "Loading order information..."}
-          </p>
-        </div>
-        <Footer />
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin text-[#708A58]" />
       </div>
     );
-  }
-
-  if (error || !order) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navbar />
-        <div className="flex-1 flex flex-col items-center justify-center p-4">
-          <div className="bg-white p-8 rounded-2xl shadow-sm text-center max-w-md">
-            <Info className="w-16 h-16 text-red-400 mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2">
-              {isArabic ? "خطأ في التحميل" : "Loading Error"}
-            </h2>
-            <p className="text-gray-500 mb-6">
-              {error || (isArabic ? "الطلب غير موجود" : "Order not found")}
-            </p>
-            <Button
-              onClick={() => navigate("/orders")}
-              className="w-full bg-[#708A58]"
-            >
-              {isArabic ? "العودة إلى الطلبات" : "Back to Orders"}
-            </Button>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
-  const customerLat = order?.latitude || order?.customer_lat;
-  const customerLng = order?.longitude || order?.customer_lng;
-  const showMap = isOnTheWay(order?.status) && tracking?.latest_location;
+  if (error || !order)
+    return <div className="p-20 text-center">Order Not Found</div>;
 
   return (
     <div
-      className="min-h-screen bg-gray-50 flex flex-col"
+      className="min-h-screen bg-[#F9FAFB] flex flex-col"
       dir={isArabic ? "rtl" : "ltr"}
     >
       <Navbar />
-
       <main className="flex-1 container mx-auto px-4 py-8">
-        {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl font-black text-gray-900">
-              {isArabic ? "تتبع طلبك" : "Track Your Order"}
-            </h1>
-            <p className="text-gray-500 text-sm">#{orderId.slice(0, 12)}</p>
-          </div>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-black">
+            {isArabic ? "تتبع مباشر" : "Live Tracking"}
+          </h1>
           <Button
             variant="outline"
             onClick={() => navigate("/orders")}
-            className="flex gap-2"
+            className="rounded-xl bg-white"
           >
             {isArabic ? (
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="ml-2 w-4" />
             ) : (
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="mr-2 w-4" />
             )}
-            {isArabic ? "العودة للطلبات" : "Back to Orders"}
+            {isArabic ? "العودة" : "Back"}
           </Button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left Column: Status Cards & Timeline */}
+          {/* Status Sidebar */}
           <div className="lg:col-span-4 space-y-6">
             <OrderStatusCard order={order} isArabic={isArabic} />
-            <OrderTimeline order={order} isArabic={isArabic} />
+            <OrderTimeline
+              order={order}
+              isArabic={isArabic}
+              progress={progressWidth}
+            />
           </div>
 
-          {/* Right Column: Dynamic Map or Info Card */}
-          <div className="lg:col-span-8">
-            {showMap ? (
-              <CourierMap
-                tracking={tracking}
-                customerLat={customerLat}
-                customerLng={customerLng}
-                isArabic={isArabic}
-              />
-            ) : (
-              <Card className="h-full min-h-[400px] flex items-center justify-center text-center border-0 shadow-sm">
-                <CardContent className="p-12">
-                  {order?.status === "PENDING" && (
-                    <div className="space-y-4">
-                      <div className="bg-yellow-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto">
-                        <Clock className="w-10 h-10 text-yellow-600" />
-                      </div>
-                      <h3 className="text-xl font-bold">
-                        {isArabic
-                          ? "في انتظار تأكيد البائع"
-                          : "Waiting for Seller Confirmation"}
-                      </h3>
-                      <p className="text-gray-500 max-w-xs mx-auto">
-                        {isArabic
-                          ? "سيتم إخطارك عند تأكيد البائع لطلبك"
-                          : "You will be notified once the seller confirms your order"}
-                      </p>
+          {/* Main Tracking View */}
+          <div className="lg:col-span-8 space-y-6">
+            <Card className="border-0 shadow-sm rounded-3xl overflow-hidden bg-white">
+              <CardContent className="p-0">
+                {/* 3. Live Map Component */}
+                <div className="h-[400px] bg-gray-100 relative">
+                  {order?.courier_details ? (
+                    <CourierMap
+                      order={order}
+                      trackingData={tracking}
+                      isArabic={isArabic}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-50 italic text-gray-400">
+                      {isArabic
+                        ? "جاري تحميل الخريطة..."
+                        : "Loading Live Map..."}
                     </div>
                   )}
+                </div>
 
-                  {order?.status === "CONFIRMED" && (
-                    <div className="space-y-4">
-                      <div className="bg-blue-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto">
-                        <Package className="w-10 h-10 text-blue-600" />
-                      </div>
-                      <h3 className="text-xl font-bold">
-                        {isArabic ? "تم تأكيد الطلب" : "Order Confirmed"}
-                      </h3>
-                      <p className="text-gray-500 max-w-xs mx-auto">
-                        {isArabic
-                          ? "البائع يقوم بتجهيز طلبك الآن"
-                          : "The seller is preparing your order"}
-                      </p>
+                {/* Progress Bar & Courier Info */}
+                <div className="p-8">
+                  <div className="relative mb-12 px-4">
+                    <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-100 -translate-y-1/2 rounded-full" />
+                    <div
+                      className="absolute top-1/2 left-0 h-1 bg-[#708A58] -translate-y-1/2 transition-all duration-1000 rounded-full"
+                      style={{ width: `${progressWidth}%` }}
+                    />
+                    <div className="relative z-10 flex justify-between">
+                      <Package
+                        className={
+                          progressWidth >= 25
+                            ? "text-[#708A58]"
+                            : "text-gray-300"
+                        }
+                      />
+                      <Truck
+                        className={
+                          progressWidth >= 65
+                            ? "text-[#708A58]"
+                            : "text-gray-300"
+                        }
+                      />
+                      <CheckCircle
+                        className={
+                          progressWidth >= 100
+                            ? "text-[#708A58]"
+                            : "text-gray-300"
+                        }
+                      />
                     </div>
-                  )}
+                  </div>
 
-                  {order?.status === "IN_PROGRESS" && (
-                    <div className="space-y-4">
-                      <Loader2 className="w-12 h-12 text-[#708A58] animate-spin mx-auto" />
-                      <h3 className="text-xl font-bold">
-                        {isArabic ? "جاري التجهيز" : "Being Prepared"}
-                      </h3>
-                      <p className="text-gray-500 max-w-xs mx-auto">
-                        {isArabic
-                          ? "جاري تعيين سائق لتوصيل طلبك"
-                          : "Assigning a courier for your delivery"}
+                  {/* Driver Card */}
+                  <div className="bg-gray-50 rounded-2xl p-6 flex items-center gap-6 border border-gray-100">
+                    <div className="w-16 h-16 bg-[#708A58] rounded-full flex items-center justify-center text-white text-xl font-bold">
+                      {order.courier_details?.name?.[0] || "C"}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-gray-900">
+                        {order.courier_details?.name || "Courier"}
+                      </h4>
+                      <p className="text-sm text-gray-500">
+                        {statusStr(order.order_status) === "preparing"
+                          ? isArabic
+                            ? "يتم تجهيز الطلب"
+                            : "Preparing your order"
+                          : isArabic
+                          ? "في الطريق إليك"
+                          : "On the way"}
                       </p>
                     </div>
-                  )}
-
-                  {order?.status === "COURIER_ASSIGNED" && (
-                    <div className="space-y-4">
-                      <div className="bg-indigo-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto">
-                        <Truck className="w-10 h-10 text-indigo-600" />
-                      </div>
-                      <h3 className="text-xl font-bold">
-                        {isArabic ? "تم تعيين السائق" : "Courier Assigned"}
-                      </h3>
-                      <p className="text-gray-500 max-w-xs mx-auto mb-4">
-                        {isArabic
-                          ? "السائق في طريقه لاستلام طلبك"
-                          : "The courier is on the way to pick up your order"}
-                      </p>
-                      <div className="inline-flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-full text-xs font-bold text-gray-600 animate-pulse">
-                        {isArabic
-                          ? "سيبدأ التتبع المباشر قريباً..."
-                          : "Live tracking will start soon..."}
-                      </div>
-                    </div>
-                  )}
-
-                  {(order?.status === "DELIVERED" ||
-                    order?.status === "COMPLETED") && (
-                    <div className="space-y-4">
-                      <div className="bg-green-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto">
-                        <CheckCircle className="w-10 h-10 text-green-600" />
-                      </div>
-                      <h3 className="text-xl font-bold">
-                        {isArabic
-                          ? "تم التوصيل بنجاح"
-                          : "Successfully Delivered"}
-                      </h3>
-                      <p className="text-gray-500 max-w-xs mx-auto">
-                        {isArabic
-                          ? "شكراً لاستخدامك منصة جديد"
-                          : "Thank you for using Jaddid platform"}
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+                    <Button className="rounded-full px-8 bg-[#708A58] hover:bg-[#5f754a]">
+                      {isArabic ? "اتصال" : "Call"}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>
-
       <Footer />
     </div>
   );

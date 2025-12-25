@@ -20,37 +20,31 @@ const customerIcon = new L.Icon({
   iconAnchor: [14, 28],
 });
 
-const CourierMap = ({ tracking, customerLat, customerLng }) => {
-  const courier = tracking?.latest_location;
-  const center = courier
-    ? [courier.latitude || courier.lat, courier.longitude || courier.lng]
-    : [customerLat || 30.0444, customerLng || 31.2357];
+const CourierMap = ({ tracking, customerLat, customerLng, isArabic }) => {
+  // 1. Get courier coordinates safely
+  const courierLat = tracking?.latest_location?.latitude;
+  const courierLng = tracking?.latest_location?.longitude;
 
-  const positions = [];
-  if (courier)
-    positions.push([
-      courier.latitude || courier.lat,
-      courier.longitude || courier.lng,
-    ]);
-  if (customerLat && customerLng) positions.push([customerLat, customerLng]);
+  // 2. CRITICAL: If any coordinate is missing, return a loader instead of a broken map
+  if (!courierLat || !courierLng || !customerLat || !customerLng) {
+    return (
+      <div className="h-[400px] w-full flex items-center justify-center bg-gray-100 rounded-2xl">
+        <Loader2 className="animate-spin text-[#708A58]" />
+      </div>
+    );
+  }
 
   return (
-    <div className="h-[500px] rounded-lg overflow-hidden border-0 shadow-sm">
-      <MapContainer center={center} zoom={13} className="h-full w-full">
+    <div className="h-[400px] w-full rounded-2xl overflow-hidden shadow-inner border relative">
+      <MapContainer
+        center={[courierLat, courierLng]}
+        zoom={13}
+        style={{ height: "100%", width: "100%" }}
+      >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         {courier && (
-          <Marker
-            position={[
-              courier.latitude || courier.lat,
-              courier.longitude || courier.lng,
-            ]}
-            icon={courierIcon}
-          >
-            <Popup>
-              {tracking?.courier_name || "Courier"}
-              <br />
-              ETA: {courier.estimated_time ?? "-"} mins
-            </Popup>
+          <Marker position={[courier.lat, courier.lng]} icon={courierIcon}>
+            <Popup>{tracking?.courier_name || "Courier"}</Popup>
           </Marker>
         )}
 

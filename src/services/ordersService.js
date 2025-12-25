@@ -43,33 +43,49 @@ const tryPostEndpoints = async (endpoints, data, config) => {
 
 const ordersService = {
   create: async (data) => {
-    const orderResponse = await api.post("/orders/orders/", data);
+    // Create the order
+    const orderResponse = await api.post("/orders/", data);
     const order = orderResponse.data;
 
-    console.log("[ordersService] Order created. Response data:", order);
-
-    // FIX: Check if the ID is 'id' or 'order_id'
-    const idToUse = order.id || order.order_id;
-
-    if (idToUse) {
+    // Automatically assign a courier to the new order
+    if (order && order.id) {
       try {
-        const assignRes = await ordersService.assignCourier(idToUse);
-        console.log("Assignment Success:", assignRes.data);
+        const assignmentResponse = await ordersService.assignCourier(order.id);
+        console.log(
+          `[ordersService] Courier assignment response:`,
+          assignmentResponse.data
+        );
 
-        // If the assignment worked, start the simulation!
-        const assignmentId = assignRes.data.assignment?.id;
-        if (assignmentId) {
-          console.log("Starting Simulation for Assignment:", assignmentId);
-          await ordersService.startDelivery(assignmentId);
+        // Check if assignment was actually created
+        if (
+          !assignmentResponse.data ||
+          !assignmentResponse.data.assignment_id
+        ) {
+          console.warn(
+            `[ordersService] Warning: Assignment endpoint returned success but no assignment_id found`
+          );
+          console.warn(
+            `[ordersService] Response data:`,
+            assignmentResponse.data
+          );
+        } else {
+          console.log(
+            `[ordersService] Successfully assigned courier to order ${order.id}`
+          );
         }
       } catch (err) {
-        console.error("Post-creation logistics failed:", err);
+        console.error(
+          `[ordersService] Failed to assign courier to order ${order.id}:`,
+          err
+        );
+        console.error(`[ordersService] Error response:`, err.response?.data);
+        // Don't fail the order creation if courier assignment fails
       }
     }
 
     return orderResponse;
   },
-  getAll: () => api.get("/orders/orders/"),
+  getAll: () => api.get("/orders/"),
 
   // Simplify getById to use the confirmed working path
   getById: async (orderId) => {
@@ -90,19 +106,20 @@ const ordersService = {
 
   // FIXED: Assign courier - correct path is /logistics/order/{id}/assign/
   assignCourier: async (orderId, data = {}) => {
-    // Ensure this orderId is not undefined!
-    console.debug(`[ordersService] Manual call to assign for ID: ${orderId}`);
-
     const endpoints = [
-      `/logistics/order/${orderId}/assign/`, // Matches your path('order/<str:order_id>/assign/')
+      `/logistics/order/${orderId}/assign/`,
+      `/logistics/order/${orderId}/assign`,
     ];
     return tryPostEndpoints(endpoints, data);
   },
 
   // FIXED: Start delivery - correct path is /logistics/assignment/{id}/start/
-  startDelivery: async (assignmentId) => {
-    // Stick to the one that worked in your URL pattern
-    return api.post(`/logistics/assignment/${assignmentId}/start/`);
+  startDelivery: async (assignmentId, data = {}) => {
+    const endpoints = [
+      `/logistics/assignment/${assignmentId}/start/`,
+      `/logistics/assignment/${assignmentId}/start`,
+    ];
+    return tryPostEndpoints(endpoints, data);
   },
 
   buyerUpdate: (id, data) =>
@@ -112,6 +129,27 @@ const ordersService = {
 
   getPurchases: () => api.get("/orders/orders/"),
   getSales: () => api.get("/orders/orders/"),
+
+  // Stripe payment methods
+  createPaymentIntent: (data) =>
+    api.post("/orders/payments/create-intent/", data),
+
+  confirmPayment: (data) => api.post("/orders/orders/", data),
+
+  // Manual assignment helper - call this explicitly when needed
+  assignCourierManually: async (orderId) => {
+    try {
+      console.log(
+        `[ordersService] Manually assigning courier to order ${orderId}`
+      );
+      const response = await ordersService.assignCourier(orderId);
+      console.log(`[ordersService] Assignment response:`, response.data);
+      return response;
+    } catch (err) {
+      console.error(`[ordersService] Manual assignment failed:`, err);
+      throw err;
+    }
+  },
 };
 
 export default ordersService;

@@ -1,9 +1,17 @@
 // src/pages/CheckoutPage.jsx
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ShoppingCart, Plus, Minus, Package, ArrowLeft } from "lucide-react";
+import {
+  ShoppingCart,
+  Plus,
+  Minus,
+  Package,
+  ArrowLeft,
+  CreditCard,
+  CheckCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MapPin, Search } from "lucide-react";
+import { MapPin } from "lucide-react";
 import {
   MapContainer,
   TileLayer,
@@ -19,15 +27,33 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
-import userService from "@/services/userService";
-import ordersService from "../services/ordersService"; // Add this import at the top
+import ordersService from "../services/ordersService";
 import marketplaceService from "@/services/marketplaceService";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { loadStripe } from "@stripe/stripe-js";
+import {
+  Elements,
+  CardElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
 import "leaflet/dist/leaflet.css";
+
+// Initialize Stripe with your publishable key
+const stripePromise = loadStripe(
+  "pk_test_51SiINbRzio7GBwIbdpjIaEKxg4h61jCDpxnJAx1bUZbhOMlHqFPTsqGrmPwzLtAGnUzSPg0JgDDL6yV05e2nSQvB0014bCbij9"
+);
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -41,26 +67,11 @@ L.Icon.Default.mergeOptions({
 
 const MapEffect = () => {
   const map = useMap();
-
   useEffect(() => {
-    // We wait 300ms to ensure the modal's "opening" animation is 100% finished
     const timer = setTimeout(() => {
       map.invalidateSize();
     }, 300);
-
     return () => clearTimeout(timer);
-  }, [map]);
-
-  return null;
-};
-
-const MapResizer = () => {
-  const map = useMap();
-  useEffect(() => {
-    // Small timeout to ensure the modal animation is finished
-    setTimeout(() => {
-      map.invalidateSize();
-    }, 200);
   }, [map]);
   return null;
 };
@@ -92,25 +103,173 @@ const LocationMarker = ({ position, setPosition, setAddress, isArabic }) => {
   return position === null ? null : <Marker position={position} />;
 };
 
+// Stripe Payment Form Component
+const StripePaymentForm = ({
+  amount,
+  onSuccess,
+  onCancel,
+  isArabic,
+  isProcessing,
+  setIsProcessing,
+}) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [error, setError] = useState(null);
+  const [clientSecret, setClientSecret] = useState(null);
+
+  // Create payment intent when component mounts
+  useEffect(() => {
+    const createIntent = async () => {
+      try {
+        const response = await ordersService.createPaymentIntent({ amount });
+        setClientSecret(response.data.clientSecret);
+      } catch (err) {
+        setError(err.response?.data?.error || "Failed to initialize payment");
+      }
+    };
+    createIntent();
+  }, [amount]);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!stripe || !elements || !clientSecret) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      // Confirm payment with Stripe
+      const { error: stripeError, paymentIntent } =
+        await stripe.confirmCardPayment(clientSecret, {
+          payment_method: {
+            card: elements.getElement(CardElement),
+          },
+        });
+
+      if (stripeError) {
+        setError(stripeError.message);
+        setIsProcessing(false);
+        return;
+      }
+
+      if (paymentIntent.status === "succeeded") {
+        // Call success with payment intent ID
+        onSuccess(paymentIntent.id);
+        setIsProcessing(false);
+      } else {
+        setError("Payment was not completed");
+        setIsProcessing(false);
+      }
+    } catch (err) {
+      setError(err.message);
+      setIsProcessing(false);
+    }
+  };
+
+  const cardElementOptions = {
+    style: {
+      base: {
+        fontSize: "16px",
+        color: "#424770",
+        "::placeholder": {
+          color: "#aab7c4",
+        },
+      },
+      invalid: {
+        color: "#9e2146",
+      },
+    },
+    hidePostalCode: true,
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div>
+        <label className="block text-sm font-medium mb-2">
+          {isArabic ? "معلومات البطاقة" : "Card Information"}
+        </label>
+        <div className="border rounded-md p-3 bg-white">
+          <CardElement options={cardElementOptions} />
+        </div>
+      </div>
+
+      {error && (
+        <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+          {error}
+        </div>
+      )}
+
+      <div className="bg-gray-50 p-4 rounded-md">
+        <div className="flex justify-between items-center text-sm mb-2">
+          <span className="text-gray-600">
+            {isArabic ? "المبلغ الإجمالي" : "Total Amount"}
+          </span>
+          <span className="font-bold text-lg">${amount.toFixed(2)}</span>
+        </div>
+        <p className="text-xs text-gray-500">
+          {isArabic
+            ? "استخدم رقم البطاقة التجريبي: 4242 4242 4242 4242"
+            : "Test card number: 4242 4242 4242 4242"}
+        </p>
+      </div>
+
+      <div className="flex gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isProcessing}
+          className="flex-1"
+        >
+          {isArabic ? "إلغاء" : "Cancel"}
+        </Button>
+        <Button
+          type="submit"
+          disabled={!stripe || isProcessing}
+          className="flex-1 bg-green-600 hover:bg-green-700"
+        >
+          {isProcessing ? (
+            isArabic ? (
+              "جاري المعالجة..."
+            ) : (
+              "Processing..."
+            )
+          ) : (
+            <>
+              <CreditCard className="w-4 h-4 mr-2" />
+              {isArabic
+                ? `ادفع $${amount.toFixed(2)}`
+                : `Pay $${amount.toFixed(2)}`}
+            </>
+          )}
+        </Button>
+      </div>
+    </form>
+  );
+};
+
 const CheckoutPage = () => {
   const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentIntentId, setPaymentIntentId] = useState(null);
+  const [isPaymentConfirmed, setIsPaymentConfirmed] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { language } = useLanguage();
   const { user } = useAuth();
   const isArabic = language === "ar";
-  const [position, setPosition] = useState([30.0444, 31.2357]); // Default to Cairo
-  const [showMap, setShowMap] = useState(false);
-  const handleAddressSelect = (newAddress) => {
-    setCustomerInfo((prev) => ({ ...prev, address: newAddress }));
-  };
+
   const [customerInfo, setCustomerInfo] = useState({
     fullName: "",
     address: "",
     phone: "",
-    lat: null, // New field
-    lng: null, // New field
+    lat: null,
+    lng: null,
   });
 
   const [tempLocation, setTempLocation] = useState({
@@ -135,10 +294,6 @@ const CheckoutPage = () => {
         ? "تم حفظ موقعك بنجاح"
         : "Your location has been saved.",
     });
-  };
-
-  const handleCancelLocation = () => {
-    setIsMapOpen(false);
   };
 
   const getImageUrl = (imagePath) => {
@@ -178,7 +333,6 @@ const CheckoutPage = () => {
   };
 
   const updateQuantity = async (itemId, newQuantity) => {
-    // Ensure quantity is a whole number before updating
     const qtyNum = Math.max(1, Math.round(parseFloat(newQuantity) || 0));
 
     setCart((prevCart) => ({
@@ -218,7 +372,19 @@ const CheckoutPage = () => {
     }
   };
 
-  const handleConfirmOrder = async () => {
+  const calculateTotal = () => {
+    return (
+      cart?.items.reduce(
+        (sum, item) =>
+          sum +
+          (item.product?.price || item.material_listing?.price_per_unit || 0) *
+            item.quantity,
+        0
+      ) || 0
+    );
+  };
+
+  const handlePayNow = async () => {
     if (!cart || cart.items.length === 0) {
       toast({
         title: isArabic ? "خطأ" : "Error",
@@ -228,7 +394,6 @@ const CheckoutPage = () => {
       return;
     }
 
-    // VALIDATION: Ensure location is set
     if (!customerInfo.address || !customerInfo.lat || !customerInfo.lng) {
       toast({
         title: isArabic ? "بيانات ناقصة" : "Missing Info",
@@ -240,12 +405,41 @@ const CheckoutPage = () => {
       return;
     }
 
+    // Open payment dialog
+    setShowPaymentDialog(true);
+  };
+
+  const handlePaymentSuccess = (paymentIntentIdFromStripe) => {
+    setPaymentIntentId(paymentIntentIdFromStripe);
+    setIsPaymentConfirmed(true);
+    setShowPaymentDialog(false);
+
+    toast({
+      title: isArabic ? "تم الدفع بنجاح" : "Payment Confirmed",
+      description: isArabic
+        ? "الآن يمكنك تأكيد الطلب"
+        : "Now you can confirm your order",
+    });
+  };
+
+  const handleConfirmOrder = async () => {
+    if (!paymentIntentId) {
+      toast({
+        title: isArabic ? "خطأ" : "Error",
+        description: isArabic
+          ? "يرجى الدفع أولاً"
+          : "Please complete payment first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+
     try {
       const itemsBySeller = {};
 
-      // 1. Group items by Seller
       cart.items.forEach((item) => {
-        // Check both product and material listing for the seller ID
         const rawSellerId =
           item.product?.seller?.id ||
           item.product?.seller ||
@@ -264,37 +458,64 @@ const CheckoutPage = () => {
 
       let firstOrderId = null;
 
-      // 2. Create one order per seller
       for (const [sellerId, sellerItems] of Object.entries(itemsBySeller)) {
-        const orderPayload = {
+        const orderData = {
           seller_id: sellerId,
           delivery_address: customerInfo.address,
           customer_lat: customerInfo.lat,
           customer_lng: customerInfo.lng,
-          order_type: sellerItems[0].product ? "product" : "material",
+
+          // FIX: Use a more robust check for order_type
+          order_type: sellerItems[0]?.product ? "product" : "material",
+
+          stripe_payment_id: paymentIntentId,
+          payment_method: "card",
+          status: "pending",
           items: sellerItems.map((item) => ({
-            product_id: item.product?.id,
-            material_listing_id: item.material_listing?.id,
+            product_id: item.product?.id || null,
+            material_listing_id: item.material_listing?.id || null,
             quantity: Math.round(parseFloat(item.quantity) || 1),
-            unit_price: parseFloat(
-              item.product?.price || item.material_listing?.price_per_unit || 0
-            ),
-            unit: item.product ? "piece" : item.material_listing?.unit || "kg",
           })),
         };
+        console.log("Payload being sent to API:", {
+          payment_intent_id: paymentIntentId,
+          order_data: orderData,
+        });
 
-        console.log("Sending order payload:", orderPayload);
-        const orderResponse = await ordersService.create(orderPayload);
+        // Confirm payment and create order
+        const orderResponse = await ordersService.confirmPayment({
+          payment_intent_id: paymentIntentId,
+          order_data: orderData, // Ensure this key matches your backend .get('order_data')
+        });
 
         if (!firstOrderId && orderResponse.data?.id) {
           firstOrderId = orderResponse.data.id;
         }
+
+        // Assign courier after order creation
+        if (orderResponse.data?.id) {
+          try {
+            console.log(
+              `Assigning courier to order ${orderResponse.data.id}...`
+            );
+            const assignmentResponse = await ordersService.assignCourier(
+              orderResponse.data.id
+            );
+            console.log(
+              "Courier assignment response:",
+              assignmentResponse.data
+            );
+          } catch (assignError) {
+            console.error(`Failed to assign courier:`, assignError);
+          }
+        }
       }
 
-      // 3. Cleanup
       await marketplaceService.cart.clear();
+      setIsProcessing(false);
+
       toast({
-        title: isArabic ? "تم" : "Success",
+        title: isArabic ? "تم إنشاء الطلب" : "Order Created",
         description: isArabic
           ? "تم إنشاء الطلبات بنجاح"
           : "Orders created successfully",
@@ -307,11 +528,12 @@ const CheckoutPage = () => {
       }
     } catch (error) {
       console.error("Order creation failed:", error.response?.data || error);
+      setIsProcessing(false);
       toast({
         title: isArabic ? "خطأ" : "Error",
         description:
-          error.response?.data?.detail ||
-          (isArabic ? "فشل تأكيد الطلب" : "Failed to confirm order"),
+          error.response?.data?.error ||
+          (isArabic ? "فشل إنشاء الطلب" : "Failed to create order"),
         variant: "destructive",
       });
     }
@@ -332,6 +554,7 @@ const CheckoutPage = () => {
 
   const items = cart?.items || [];
   const isEmpty = items.length === 0;
+  const totalAmount = calculateTotal();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -404,7 +627,6 @@ const CheckoutPage = () => {
                           key={item.id}
                           className="flex flex-col sm:flex-row gap-4 p-4 border rounded-lg"
                         >
-                          {/* Image */}
                           <div className="w-full sm:w-24 h-48 sm:h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                             {imageUrl ? (
                               <img
@@ -422,7 +644,6 @@ const CheckoutPage = () => {
                             )}
                           </div>
 
-                          {/* Details */}
                           <div className="flex-1 min-w-0">
                             <Link
                               to={`/marketplace/${itemType}/${itemData.id}`}
@@ -435,14 +656,15 @@ const CheckoutPage = () => {
                             </p>
                             <p className="text-sm text-gray-500 mt-1">
                               $
-                              {item.quantity *
+                              {(
+                                item.quantity *
                                 (item.product?.price ||
                                   item.material_listing?.price_per_unit ||
-                                  0)}
+                                  0)
+                              ).toFixed(2)}
                             </p>
                           </div>
 
-                          {/* Quantity */}
                           <div className="flex flex-col items-stretch sm:items-end gap-3 sm:gap-2 w-full sm:w-auto">
                             <div className="flex items-center justify-center gap-2">
                               <Button
@@ -455,6 +677,7 @@ const CheckoutPage = () => {
                                     Math.floor(parseFloat(item.quantity)) - 1
                                   )
                                 }
+                                disabled={isPaymentConfirmed}
                               >
                                 <Minus className="w-4 h-4" />
                               </Button>
@@ -469,6 +692,7 @@ const CheckoutPage = () => {
                                 className="w-20 text-center"
                                 min="1"
                                 step="1"
+                                disabled={isPaymentConfirmed}
                               />
                               <Button
                                 variant="outline"
@@ -480,6 +704,7 @@ const CheckoutPage = () => {
                                     Math.floor(parseFloat(item.quantity)) + 1
                                   )
                                 }
+                                disabled={isPaymentConfirmed}
                               >
                                 <Plus className="w-4 h-4" />
                               </Button>
@@ -504,143 +729,37 @@ const CheckoutPage = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {/* Address Section with Map Toggle */}
+                  <Input
+                    value={customerInfo.fullName}
+                    onChange={(e) =>
+                      setCustomerInfo({
+                        ...customerInfo,
+                        fullName: e.target.value,
+                      })
+                    }
+                    placeholder={isArabic ? "الاسم الكامل" : "Full Name"}
+                    disabled={isPaymentConfirmed}
+                  />
+
                   <div className="space-y-2">
-                    {/* Inside the Customer Information CardContent */}
-                    <div className="space-y-4">
-                      <Input
-                        value={customerInfo.fullName}
-                        onChange={(e) =>
-                          setCustomerInfo({
-                            ...customerInfo,
-                            fullName: e.target.value,
-                          })
-                        }
-                        placeholder={isArabic ? "الاسم الكامل" : "Full Name"}
-                      />
-
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <label className="text-sm font-medium">
-                            {isArabic ? "العنوان" : "Address"}
-                          </label>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="flex gap-2 text-green-600 border-green-200 hover:bg-green-50"
-                            onClick={() => setIsMapOpen(true)}
-                          >
-                            <MapPin className="w-4 h-4" />
-                            {isArabic
-                              ? "تحديد الموقع من الخريطة"
-                              : "Select Location on Map"}
-                          </Button>
-                        </div>
-
-                        <textarea
-                          value={customerInfo.address}
-                          onChange={(e) =>
-                            setCustomerInfo({
-                              ...customerInfo,
-                              address: e.target.value,
-                            })
-                          }
-                          placeholder={
-                            isArabic ? "العنوان بالتفصيل" : "Detailed Address"
-                          }
-                          className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        />
-
-                        {customerInfo.lat && (
-                          <p className="text-[10px] text-gray-400">
-                            GPS: {customerInfo.lat.toFixed(4)},{" "}
-                            {customerInfo.lng.toFixed(4)}
-                          </p>
-                        )}
-                      </div>
-                      {/* ... Phone input */}
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm font-medium">
+                        {isArabic ? "العنوان" : "Address"}
+                      </label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="flex gap-2 text-green-600 border-green-200 hover:bg-green-50"
+                        onClick={() => setIsMapOpen(true)}
+                        disabled={isPaymentConfirmed}
+                      >
+                        <MapPin className="w-4 h-4" />
+                        {isArabic
+                          ? "تحديد الموقع من الخريطة"
+                          : "Select Location on Map"}
+                      </Button>
                     </div>
-
-                    {/* FULL SCREEN MAP OVERLAY */}
-                    {isMapOpen && (
-                      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                        <Card className="w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden shadow-2xl">
-                          <CardHeader className="border-b bg-white">
-                            <CardTitle className="flex justify-between items-center text-lg">
-                              {isArabic ? "اختر موقعك" : "Select Your Location"}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={handleCancelLocation}
-                              >
-                                ×
-                              </Button>
-                            </CardTitle>
-                          </CardHeader>
-
-                          <CardContent className="p-0 relative h-[400px] w-full">
-                            <MapContainer
-                              center={[tempLocation.lat, tempLocation.lng]}
-                              zoom={13}
-                              style={{
-                                height: "100%",
-                                width: "100%",
-                                zIndex: 1,
-                              }}
-                            >
-                              <TileLayer
-                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                attribution="&copy; OpenStreetMap"
-                              />
-                              <LocationMarker
-                                position={[tempLocation.lat, tempLocation.lng]}
-                                setPosition={(pos) =>
-                                  setTempLocation((prev) => ({
-                                    ...prev,
-                                    lat: pos[0],
-                                    lng: pos[1],
-                                  }))
-                                }
-                                setAddress={(addr) =>
-                                  setTempLocation((prev) => ({
-                                    ...prev,
-                                    address: addr,
-                                  }))
-                                }
-                                isArabic={isArabic}
-                              />
-                              <MapEffect />
-                            </MapContainer>
-
-                            {/* Floating Address Indicator */}
-                            <div className="absolute bottom-4 left-4 right-4 z-[1000] bg-white/95 p-3 rounded-lg shadow-lg border">
-                              <p className="text-sm font-medium text-gray-700 truncate">
-                                {tempLocation.address ||
-                                  (isArabic
-                                    ? "انقر على الخريطة لتحديد الموقع"
-                                    : "Click map to set location")}
-                              </p>
-                            </div>
-                          </CardContent>
-
-                          <CardFooter className="border-t p-4 bg-gray-50 flex gap-3 justify-end">
-                            <Button
-                              variant="outline"
-                              onClick={handleCancelLocation}
-                            >
-                              {isArabic ? "إلغاء" : "Cancel"}
-                            </Button>
-                            <Button
-                              onClick={handleConfirmLocation}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              {isArabic ? "تأكيد الموقع" : "Confirm Location"}
-                            </Button>
-                          </CardFooter>
-                        </Card>
-                      </div>
-                    )}
 
                     <textarea
                       value={customerInfo.address}
@@ -653,9 +772,18 @@ const CheckoutPage = () => {
                       placeholder={
                         isArabic ? "العنوان بالتفصيل" : "Detailed Address"
                       }
-                      className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      disabled={isPaymentConfirmed}
                     />
+
+                    {customerInfo.lat && (
+                      <p className="text-[10px] text-gray-400">
+                        GPS: {customerInfo.lat.toFixed(4)},{" "}
+                        {customerInfo.lng.toFixed(4)}
+                      </p>
+                    )}
                   </div>
+
                   <Input
                     value={customerInfo.phone}
                     onChange={(e) =>
@@ -665,6 +793,7 @@ const CheckoutPage = () => {
                       })
                     }
                     placeholder={isArabic ? "رقم التليفون" : "Phone Number"}
+                    disabled={isPaymentConfirmed}
                   />
                 </CardContent>
 
@@ -685,16 +814,7 @@ const CheckoutPage = () => {
                           {isArabic ? "المجموع الفرعي" : "Subtotal"}
                         </span>
                         <span className="font-semibold">
-                          $
-                          {cart.items.reduce(
-                            (sum, item) =>
-                              sum +
-                              (item.product?.price ||
-                                item.material_listing?.price_per_unit ||
-                                0) *
-                                item.quantity,
-                            0
-                          )}
+                          ${totalAmount.toFixed(2)}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -718,31 +838,52 @@ const CheckoutPage = () => {
                           {isArabic ? "الإجمالي" : "Total"}
                         </span>
                         <span className="font-bold text-green-600">
-                          $
-                          {cart.items.reduce(
-                            (sum, item) =>
-                              sum +
-                              (item.product?.price ||
-                                item.material_listing?.price_per_unit ||
-                                0) *
-                                item.quantity,
-                            0
-                          )}
+                          ${totalAmount.toFixed(2)}
                         </span>
                       </div>
-                      <p className="text-orange font-semibold">
-                        {isArabic ? "الدفع عند التسليم" : "Cash on Delivery"}
-                      </p>
+
+                      {/* Payment Status */}
+                      {isPaymentConfirmed && (
+                        <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md mt-3">
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                          <span className="text-sm font-medium text-green-700">
+                            {isArabic ? "تم الدفع بنجاح" : "Payment Confirmed"}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
-                  <CardFooter>
-                    <Button
-                      className="w-full"
-                      size="lg"
-                      onClick={handleConfirmOrder}
-                    >
-                      {isArabic ? "تأكيد الطلب" : "Confirm Order"}
-                    </Button>
+                  <CardFooter className="flex flex-col gap-2">
+                    {!isPaymentConfirmed ? (
+                      <Button
+                        className="w-full bg-green-600 hover:bg-green-700"
+                        size="lg"
+                        onClick={handlePayNow}
+                      >
+                        <CreditCard className="w-4 h-4 mr-2" />
+                        {isArabic ? "الدفع الآن" : "Pay Now"}
+                      </Button>
+                    ) : (
+                      <Button
+                        className="w-full bg-blue-600 hover:bg-blue-700"
+                        size="lg"
+                        onClick={handleConfirmOrder}
+                        disabled={isProcessing}
+                      >
+                        {isProcessing ? (
+                          isArabic ? (
+                            "جاري إنشاء الطلب..."
+                          ) : (
+                            "Creating Order..."
+                          )
+                        ) : (
+                          <>
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            {isArabic ? "تأكيد الطلب" : "Confirm Order"}
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </CardFooter>
                 </Card>
               </Card>
@@ -750,6 +891,109 @@ const CheckoutPage = () => {
           )}
         </div>
       </div>
+
+      {/* Map Dialog */}
+      {isMapOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <Card className="w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden shadow-2xl">
+            <CardHeader className="border-b bg-white">
+              <CardTitle className="flex justify-between items-center text-lg">
+                {isArabic ? "اختر موقعك" : "Select Your Location"}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsMapOpen(false)}
+                >
+                  ×
+                </Button>
+              </CardTitle>
+            </CardHeader>
+
+            <CardContent className="p-0 relative h-[400px] w-full">
+              <MapContainer
+                center={[tempLocation.lat, tempLocation.lng]}
+                zoom={13}
+                style={{
+                  height: "100%",
+                  width: "100%",
+                  zIndex: 1,
+                }}
+              >
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution="&copy; OpenStreetMap"
+                />
+                <LocationMarker
+                  position={[tempLocation.lat, tempLocation.lng]}
+                  setPosition={(pos) =>
+                    setTempLocation((prev) => ({
+                      ...prev,
+                      lat: pos[0],
+                      lng: pos[1],
+                    }))
+                  }
+                  setAddress={(addr) =>
+                    setTempLocation((prev) => ({
+                      ...prev,
+                      address: addr,
+                    }))
+                  }
+                  isArabic={isArabic}
+                />
+                <MapEffect />
+              </MapContainer>
+
+              <div className="absolute bottom-4 left-4 right-4 z-[1000] bg-white/95 p-3 rounded-lg shadow-lg border">
+                <p className="text-sm font-medium text-gray-700 truncate">
+                  {tempLocation.address ||
+                    (isArabic
+                      ? "انقر على الخريطة لتحديد الموقع"
+                      : "Click map to set location")}
+                </p>
+              </div>
+            </CardContent>
+
+            <CardFooter className="border-t p-4 bg-gray-50 flex gap-3 justify-end">
+              <Button variant="outline" onClick={() => setIsMapOpen(false)}>
+                {isArabic ? "إلغاء" : "Cancel"}
+              </Button>
+              <Button
+                onClick={handleConfirmLocation}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {isArabic ? "تأكيد الموقع" : "Confirm Location"}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+
+      {/* Stripe Payment Dialog */}
+      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className={isArabic ? "font-arabic" : ""}>
+              {isArabic ? "إتمام الدفع" : "Complete Payment"}
+            </DialogTitle>
+            <DialogDescription>
+              {isArabic
+                ? "أدخل معلومات بطاقتك لإتمام الدفع. بعد ذلك يمكنك تأكيد الطلب."
+                : "Enter your card details to complete payment. After that you can confirm your order."}
+            </DialogDescription>
+          </DialogHeader>
+          <Elements stripe={stripePromise}>
+            <StripePaymentForm
+              amount={totalAmount}
+              onSuccess={handlePaymentSuccess}
+              onCancel={() => setShowPaymentDialog(false)}
+              isArabic={isArabic}
+              isProcessing={isProcessing}
+              setIsProcessing={setIsProcessing}
+            />
+          </Elements>
+        </DialogContent>
+      </Dialog>
+
       <Footer />
     </div>
   );
