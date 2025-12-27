@@ -7,6 +7,7 @@ import {
   Polyline,
 } from "react-leaflet";
 import L from "leaflet";
+import { Loader2 } from "lucide-react";
 
 const courierIcon = new L.Icon({
   iconUrl: "https://cdn-icons-png.flaticon.com/512/1995/1995574.png",
@@ -20,19 +21,32 @@ const customerIcon = new L.Icon({
   iconAnchor: [14, 28],
 });
 
-const CourierMap = ({ tracking, customerLat, customerLng, isArabic }) => {
-  // 1. Get courier coordinates safely
-  const courierLat = tracking?.latest_location?.latitude;
-  const courierLng = tracking?.latest_location?.longitude;
+const CourierMap = ({ order, trackingData, isArabic }) => {
+  // Extract courier coordinates from order data
+  const courierLat = trackingData?.latest_location?.latitude || order?.courier_details?.current_lat;
+  const courierLng = trackingData?.latest_location?.longitude || order?.courier_details?.current_lng;
+  
+  // Extract customer coordinates from order delivery address or default
+  const customerLat = order?.delivery_lat || 30.0444; // Cairo default
+  const customerLng = order?.delivery_lng || 31.2357;
 
-  // 2. CRITICAL: If any coordinate is missing, return a loader instead of a broken map
-  if (!courierLat || !courierLng || !customerLat || !customerLng) {
+  // If courier coordinates are missing, show loading state
+  if (!courierLat || !courierLng) {
     return (
       <div className="h-[400px] w-full flex items-center justify-center bg-gray-100 rounded-2xl">
-        <Loader2 className="animate-spin text-[#708A58]" />
+        <div className="text-center">
+          <Loader2 className="animate-spin text-[#708A58] w-12 h-12 mx-auto mb-2" />
+          <p className="text-gray-600">{isArabic ? 'جاري تحميل الموقع...' : 'Loading location...'}</p>
+        </div>
       </div>
     );
   }
+
+  // Create polyline between courier and customer
+  const positions = [
+    [courierLat, courierLng],
+    [customerLat, customerLng]
+  ];
 
   return (
     <div className="h-[400px] w-full rounded-2xl overflow-hidden shadow-inner border relative">
@@ -40,23 +54,39 @@ const CourierMap = ({ tracking, customerLat, customerLng, isArabic }) => {
         center={[courierLat, courierLng]}
         zoom={13}
         style={{ height: "100%", width: "100%" }}
+        key={`${courierLat}-${courierLng}`}
       >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        {courier && (
-          <Marker position={[courier.lat, courier.lng]} icon={courierIcon}>
-            <Popup>{tracking?.courier_name || "Courier"}</Popup>
-          </Marker>
-        )}
+        <TileLayer 
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
+        
+        {/* Courier Marker */}
+        <Marker position={[courierLat, courierLng]} icon={courierIcon}>
+          <Popup>
+            <strong>{order?.courier_details?.name || (isArabic ? 'المندوب' : 'Courier')}</strong>
+            <br />
+            {isArabic ? 'الموقع الحالي' : 'Current Location'}
+          </Popup>
+        </Marker>
 
-        {customerLat && customerLng && (
-          <Marker position={[customerLat, customerLng]} icon={customerIcon}>
-            <Popup>Your location</Popup>
-          </Marker>
-        )}
+        {/* Customer Marker */}
+        <Marker position={[customerLat, customerLng]} icon={customerIcon}>
+          <Popup>
+            <strong>{isArabic ? 'موقعك' : 'Your Location'}</strong>
+            <br />
+            {order?.delivery_address || (isArabic ? 'عنوان التوصيل' : 'Delivery Address')}
+          </Popup>
+        </Marker>
 
-        {positions.length >= 2 && (
-          <Polyline positions={positions} color="#2D4F2B" />
-        )}
+        {/* Route Line */}
+        <Polyline 
+          positions={positions} 
+          color="#708A58" 
+          weight={3}
+          opacity={0.7}
+          dashArray="10, 10"
+        />
       </MapContainer>
     </div>
   );

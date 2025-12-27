@@ -1,10 +1,12 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, ArrowLeft, Handshake, Recycle, Lock, Truck, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import ctaIllustration from '@/assets/cta-illustration.svg';
 
 export default function CTASection() {
   const { t, isRTL } = useLanguage();
+  const navigate = useNavigate();
   const Arrow = isRTL ? ArrowLeft : ArrowRight;
 
   return (
@@ -43,11 +45,11 @@ export default function CTASection() {
               </p>
               
               <div className={`flex flex-col sm:flex-row gap-4 justify-center md:justify-start ${isRTL ? 'md:justify-end sm:flex-row-reverse' : ''}`}>
-                <Button className="btn-primary group">
+                <Button onClick={() => navigate('/register')} className="btn-primary group">
                   {t('cta.button')}
                   <Arrow className={`w-5 h-5 transition-transform group-hover:translate-x-1 ${isRTL ? 'group-hover:-translate-x-1' : ''}`} />
                 </Button>
-                <Button variant="outline" className="px-6 py-3 rounded-full font-semibold border-2 border-sage text-forest hover:bg-sage hover:text-white transition-all group">
+                <Button onClick={() => navigate('/services')} variant="outline" className="px-6 py-3 rounded-full font-semibold border-2 border-sage text-forest hover:bg-sage hover:text-white transition-all group">
                   <Handshake className="w-5 h-5" />
                   {t('cta.secondary')}
                 </Button>

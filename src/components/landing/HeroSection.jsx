@@ -1,11 +1,13 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, ArrowLeft, Recycle, Leaf, Coins, BadgeCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import heroIllustration from '@/assets/illustration-1.svg';
 import leavesDecoration from '@/assets/leaves-decoration.svg';
 
 export default function HeroSection() {
   const { t, isRTL } = useLanguage();
+  const navigate = useNavigate();
   const Arrow = isRTL ? ArrowLeft : ArrowRight;
 
   return (
@@ -56,11 +58,11 @@ export default function HeroSection() {
             </p>
             
             <div className={`flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-fade-in-up delay-300 ${isRTL ? 'lg:justify-end sm:flex-row-reverse' : ''}`}>
-              <Button className="btn-primary group">
+              <Button onClick={() => navigate('/marketplace')} className="btn-primary group">
                 {t('hero.cta')}
                 <Arrow className={`w-5 h-5 transition-transform group-hover:translate-x-1 ${isRTL ? 'group-hover:-translate-x-1' : ''}`} />
               </Button>
-              <Button variant="outline" className="px-8 py-4 rounded-full font-semibold text-lg border-2 border-sage text-forest hover:bg-sage hover:text-white transition-all">
+              <Button onClick={() => navigate('/services')} variant="outline" className="px-8 py-4 rounded-full font-semibold text-lg border-2 border-sage text-forest hover:bg-sage hover:text-white transition-all">
                 {t('hero.secondaryCta')}
               </Button>
             </div>

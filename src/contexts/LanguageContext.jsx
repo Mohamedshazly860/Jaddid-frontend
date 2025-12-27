@@ -7,6 +7,8 @@ const translations = {
     'nav.marketplace': 'Marketplace',
     'nav.orders': 'Orders',
     'nav.profile': 'Profile',
+    'nav.favourites': 'Favourites',
+    'nav.services': 'Services',
     'nav.getStarted': 'Get Started',
     
     // Hero Section
@@ -62,6 +64,8 @@ const translations = {
     'nav.marketplace': 'السوق',
     'nav.orders': 'الطلبات',
     'nav.profile': 'الملف الشخصي',
+    'nav.favourites': 'المفضلة',
+    'nav.services': 'الخدمات',
     'nav.getStarted': 'ابدأ الآن',
     
     // Hero Section

@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Package, Eye, CheckCircle, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Navbar from "@/components/landing/Navbar";
+import Footer from "@/components/landing/Footer";
 import {
   Card,
   CardContent,
@@ -242,8 +244,9 @@ const OrdersPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">My Orders</h1>
+      <Navbar />
+      <div className="container mx-auto px-4 py-8 mt-20">
+        <h1 className="text-3xl font-bold mb-8">{isArabic ? 'طلباتي' : 'My Orders'}</h1>
         {/* Normalize counts and lists for both paginated and array responses */}
         {/** purchases/sales may be either an array or an object with `results` */}
         {(() => {
@@ -418,6 +421,7 @@ const OrdersPage = () => {
           )}
         </DialogContent>
       </Dialog>
+      <Footer />
     </div>
   );
 };

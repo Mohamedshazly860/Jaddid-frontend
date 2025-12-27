@@ -1,5 +1,6 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Facebook, Twitter, Instagram, Linkedin, Mail, Phone, MapPin, Recycle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Footer() {
   const { t, isRTL } = useLanguage();
@@ -43,10 +44,11 @@ export default function Footer() {
               {t('footer.quickLinks')}
             </h4>
             <ul className="space-y-3">
-              <li><a href="#" className="text-white/80 hover:text-orange transition-colors">{t('nav.home')}</a></li>
-              <li><a href="#" className="text-white/80 hover:text-orange transition-colors">{t('nav.marketplace')}</a></li>
-              <li><a href="#" className="text-white/80 hover:text-orange transition-colors">{t('nav.orders')}</a></li>
-              <li><a href="#" className="text-white/80 hover:text-orange transition-colors">{t('nav.profile')}</a></li>
+              <li><Link to="/" className="text-white/80 hover:text-orange transition-colors">{t('nav.home')}</Link></li>
+              <li><Link to="/marketplace" className="text-white/80 hover:text-orange transition-colors">{t('nav.marketplace')}</Link></li>
+              <li><Link to="/marketplace/orders" className="text-white/80 hover:text-orange transition-colors">{t('nav.orders')}</Link></li>
+              <li><Link to="/marketplace/favorites" className="text-white/80 hover:text-orange transition-colors">{t('nav.favourites')}</Link></li>
+              <li><Link to="/services" className="text-white/80 hover:text-orange transition-colors">{t('nav.services')}</Link></li>
             </ul>
           </div>
 

@@ -2,6 +2,135 @@ import { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
 import { sendChatMessage } from '../../services/chatbotService';
 
+// Format text with markdown-style formatting
+const formatMessage = (text) => {
+  if (!text) return '';
+  
+  // Split text into lines for processing
+  const lines = text.split('\n');
+  const formattedLines = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    
+    // Skip empty lines
+    if (!line.trim()) {
+      formattedLines.push(<br key={`br-${i}`} />);
+      continue;
+    }
+    
+    // Headers (lines ending with : or lines in ALL CAPS)
+    if (line.match(/^[A-Z][^a-z]*:$/) || line.match(/^#{1,3}\s/)) {
+      const headerText = line.replace(/^#{1,3}\s/, '').replace(/:$/, '');
+      formattedLines.push(
+        <div key={i} className="font-bold text-base mb-2 mt-3 text-gray-900">
+          {headerText}
+        </div>
+      );
+      continue;
+    }
+    
+    // Bullet points
+    if (line.match(/^[•\-\*]\s/) || line.match(/^\d+\.\s/)) {
+      const bulletText = line.replace(/^[•\-\*]\s/, '').replace(/^\d+\.\s/, '');
+      const formatted = formatInlineText(bulletText);
+      formattedLines.push(
+        <div key={i} className="flex gap-2 mb-1 ml-2">
+          <span className="text-sage font-bold">•</span>
+          <span className="flex-1">{formatted}</span>
+        </div>
+      );
+      continue;
+    }
+    
+    // Bold text patterns
+    if (line.includes('**') || line.match(/^[A-Z][^:]*:/)) {
+      const formatted = formatInlineText(line);
+      formattedLines.push(
+        <div key={i} className="mb-2">
+          {formatted}
+        </div>
+      );
+      continue;
+    }
+    
+    // Regular text
+    const formatted = formatInlineText(line);
+    formattedLines.push(
+      <div key={i} className="mb-2">
+        {formatted}
+      </div>
+    );
+  }
+  
+  return <div className="space-y-1">{formattedLines}</div>;
+};
+
+// Format inline text elements (bold, italic, code, links)
+const formatInlineText = (text) => {
+  const parts = [];
+  let currentIndex = 0;
+  const regex = /(\*\*.*?\*\*|\*.*?\*|`.*?`|https?:\/\/[^\s]+)/g;
+  let match;
+  
+  while ((match = regex.exec(text)) !== null) {
+    // Add text before match
+    if (match.index > currentIndex) {
+      parts.push(text.substring(currentIndex, match.index));
+    }
+    
+    const matchedText = match[0];
+    
+    // Bold text **text**
+    if (matchedText.startsWith('**') && matchedText.endsWith('**')) {
+      parts.push(
+        <strong key={match.index} className="font-bold text-gray-900">
+          {matchedText.slice(2, -2)}
+        </strong>
+      );
+    }
+    // Italic text *text*
+    else if (matchedText.startsWith('*') && matchedText.endsWith('*')) {
+      parts.push(
+        <em key={match.index} className="italic">
+          {matchedText.slice(1, -1)}
+        </em>
+      );
+    }
+    // Code `text`
+    else if (matchedText.startsWith('`') && matchedText.endsWith('`')) {
+      parts.push(
+        <code key={match.index} className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono">
+          {matchedText.slice(1, -1)}
+        </code>
+      );
+    }
+    // Links
+    else if (matchedText.startsWith('http')) {
+      parts.push(
+        <a
+          key={match.index}
+          href={matchedText}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sage hover:text-forest underline"
+        >
+          {matchedText}
+        </a>
+      );
+    }
+    
+    currentIndex = match.index + matchedText.length;
+  }
+  
+  // Add remaining text
+  if (currentIndex < text.length) {
+    parts.push(text.substring(currentIndex));
+  }
+  
+  return parts.length > 0 ? parts : text;
+};
+
 const ChatbotWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
@@ -138,7 +267,12 @@ const ChatbotWidget = () => {
                       : 'bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm'
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                  <div className="text-sm break-words">
+                    {message.type === 'bot' 
+                      ? formatMessage(message.content)
+                      : <p className="whitespace-pre-wrap">{message.content}</p>
+                    }
+                  </div>
                   <p
                     className={`text-xs mt-2 ${
                       message.type === 'user'

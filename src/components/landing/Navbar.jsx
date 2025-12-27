@@ -103,9 +103,8 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <div
-            className={`flex items-center gap-3 ${
-              isRTL ? "flex-row-reverse" : ""
-            }`}
+            className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""
+              }`}
           >
             <div className="w-12 h-12 bg-forest rounded-xl flex items-center justify-center shadow-lg">
               <Recycle className="w-7 h-7 text-white" />
@@ -119,9 +118,8 @@ export default function Navbar() {
 
           {/* Desktop Nav */}
           <div
-            className={`hidden md:flex items-center gap-8 ${
-              isRTL ? "flex-row-reverse" : ""
-            }`}
+            className={`hidden md:flex items-center gap-8 ${isRTL ? "flex-row-reverse" : ""
+              }`}
           >
             <Link to="/" className="text-forest font-medium">
               {t("nav.home")}
@@ -132,16 +130,19 @@ export default function Navbar() {
             <Link to="/orders" className="text-muted-foreground">
               {t("nav.orders")}
             </Link>
+
             <Link to="/marketplace/favorites" className="text-muted-foreground">
-              {t("nav.profile")}
+              {t("nav.favourites")}
+            </Link>
+            <Link to="/services" className="text-muted-foreground">
+              {t("nav.services")}
             </Link>
           </div>
 
           {/* Actions */}
           <div
-            className={`hidden md:flex items-center gap-4 ${
-              isRTL ? "flex-row-reverse" : ""
-            }`}
+            className={`hidden md:flex items-center gap-4 ${isRTL ? "flex-row-reverse" : ""
+              }`}
           >
             <button
               onClick={toggleLanguage}
@@ -185,16 +186,14 @@ export default function Navbar() {
                           <DropdownMenuItem
                             key={n.id}
                             onClick={() => handleNotificationClick(n.id)}
-                            className={`flex items-start gap-3 p-3 cursor-pointer hover:bg-cream/50 ${
-                              !n.is_read
+                            className={`flex items-start gap-3 p-3 cursor-pointer hover:bg-cream/50 ${!n.is_read
                                 ? "bg-orange/10 border-l-2 border-orange"
                                 : ""
-                            }`}
+                              }`}
                           >
                             <div
-                              className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                                !n.is_read ? "bg-orange" : "bg-transparent"
-                              }`}
+                              className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${!n.is_read ? "bg-orange" : "bg-transparent"
+                                }`}
                             />
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm truncate">
@@ -206,8 +205,8 @@ export default function Navbar() {
                                     ? `${n.msg_en.substring(0, 60)}...`
                                     : n.msg_en
                                   : n.msg_ar?.length > 60
-                                  ? `${n.msg_ar.substring(0, 60)}...`
-                                  : n.msg_ar}
+                                    ? `${n.msg_ar.substring(0, 60)}...`
+                                    : n.msg_ar}
                               </p>
                               <p className="text-xs text-muted-foreground mt-1">
                                 {new Date(n.created_at).toLocaleDateString(
@@ -268,7 +267,7 @@ export default function Navbar() {
                       <User className="w-4 h-4 mr-2" /> Profile
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => navigate("/marketplace/orders")}
+                      onClick={() => navigate("/orders")}
                     >
                       <Recycle className="w-4 h-4 mr-2" /> My Orders
                     </DropdownMenuItem>
@@ -338,11 +337,18 @@ export default function Navbar() {
                 {t("nav.orders")}
               </Link>
               <Link
+                to="/services"
+                className="block text-muted-foreground"
+                onClick={() => setIsOpen(false)}
+              >
+                {t("nav.services")}
+              </Link>
+              <Link
                 to="/marketplace/favorites"
                 className="block text-muted-foreground"
                 onClick={() => setIsOpen(false)}
               >
-                {t("nav.profile")}
+                {language === "en" ? "Favourites" : "المفضلة"}
               </Link>
 
               <div className="border-t border-sage/20 pt-4">
@@ -406,9 +412,8 @@ export default function Navbar() {
                                       );
                                     }
                                   }}
-                                  className={`flex flex-col gap-1 ${
-                                    !n.is_read ? "bg-cream/60" : ""
-                                  }`}
+                                  className={`flex flex-col gap-1 ${!n.is_read ? "bg-cream/60" : ""
+                                    }`}
                                 >
                                   <p className="font-medium">
                                     {language === "en"
