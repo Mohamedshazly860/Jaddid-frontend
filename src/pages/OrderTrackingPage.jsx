@@ -1,194 +1,594 @@
-import React, { useEffect, useCallback } from "react";
+// src/pages/OrderTrackingPage.jsx
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useOrderTracking } from "@/hooks/useOrderTracking";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
-import OrderStatusCard from "@/components/order/OrderStatusCard";
-import CourierMap from "@/components/order/CourierMap";
-import OrderTimeline from "@/components/order/OrderTimeline";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Loader2,
   Package,
+  CheckCircle2,
   Truck,
-  CheckCircle,
+  MapPin,
+  Clock,
+  User,
+  Phone,
   ArrowLeft,
-  ArrowRight,
+  PartyPopper,
 } from "lucide-react";
+import ordersService from "@/services/ordersService";
+import { useToast } from "@/hooks/use-toast";
 
 const OrderTrackingPage = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { language } = useLanguage();
+  const { toast } = useToast();
   const isArabic = language === "ar";
 
-  // order contains courier_details from your Serializer
-  const { order, tracking, loading, error, refetch } =
-    useOrderTracking(orderId);
+  const [order, setOrder] = useState(null);
+  const [tracking, setTracking] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isSimulationTriggered, setIsSimulationTriggered] = useState(false);
+  // Order status progression - matches your backend statuses
+  const statusSteps = [
+    {
+      key: "pending",
+      label: isArabic ? "قيد الانتظار" : "Pending",
+      icon: Clock,
+    },
+    {
+      key: "confirmed",
+      label: isArabic ? "تم التأكيد" : "Confirmed",
+      icon: CheckCircle2,
+    },
+    {
+      key: "courier_assigned",
+      label: isArabic ? "تم تعيين السائق" : "Courier Assigned",
+      icon: User,
+    },
+    {
+      key: "in_progress",
+      label: isArabic ? "في الطريق" : "In Progress",
+      icon: Truck,
+    },
+    {
+      key: "delivered",
+      label: isArabic ? "تم التوصيل" : "Delivered",
+      icon: Package,
+    },
+  ];
 
-  const statusStr = (s) => (s ? String(s).toLowerCase() : "");
+  const fetchOrderData = async () => {
+    try {
+      const [orderResponse, trackingResponse] = await Promise.all([
+        ordersService.getOrder(orderId),
+        ordersService.getTracking(orderId),
+      ]);
 
-  // --- 1. Polling Logic (Live Updates) ---
+      console.log("Order data:", orderResponse.data);
+      console.log("Tracking data:", trackingResponse.data);
+
+      setOrder(orderResponse.data);
+      setTracking(trackingResponse.data);
+      setError(null);
+    } catch (err) {
+      console.error("Failed to fetch order data:", err);
+      setError(err.response?.data?.error || "Failed to load order");
+      toast({
+        title: isArabic ? "خطأ" : "Error",
+        description: isArabic
+          ? "فشل تحميل بيانات الطلب"
+          : "Failed to load order data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    if (!orderId) return;
+    if (orderId) {
+      fetchOrderData();
+    }
+  }, [orderId]);
 
-    // Refresh every 5 seconds to track the courier's movement/status
-    const interval = setInterval(() => {
-      const st = statusStr(order?.order_status);
-      if (st === "delivered" || st === "completed") {
-        clearInterval(interval);
-      } else {
-        refetch();
+  useEffect(() => {
+    const triggerSimulation = async () => {
+      // Only trigger if order is in progress, we have an assignment ID,
+      // we haven't triggered it yet in this session, and logs are empty.
+      if (
+        order &&
+        order.order_status === "in_progress" &&
+        order.assignment_id &&
+        !isSimulationTriggered &&
+        (!tracking?.tracking_logs || tracking.tracking_logs.length === 0)
+      ) {
+        try {
+          setIsSimulationTriggered(true);
+          console.log(
+            "Triggering delivery simulation for assignment:",
+            order.assignment_id
+          );
+
+          // Use the startDelivery endpoint from your orderService
+          await ordersService.startDelivery(order.assignment_id);
+
+          // Refresh data immediately to get the first generated log
+          fetchOrderData();
+        } catch (err) {
+          console.error("Failed to auto-start delivery simulation:", err);
+          // Reset so it can try again on the next poll if it failed
+          setIsSimulationTriggered(false);
+        }
       }
+    };
+
+    triggerSimulation();
+  }, [
+    order?.order_status,
+    order?.assignment_id,
+    tracking?.tracking_logs?.length,
+  ]);
+
+  // Poll for updates every 5 seconds if not delivered
+  useEffect(() => {
+    if (
+      !order ||
+      order.order_status === "delivered" ||
+      order.order_status === "completed"
+    ) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      fetchOrderData();
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [orderId, order?.order_status, refetch]);
+  }, [order?.order_status]);
 
-  // --- 2. Progress Calculation ---
-  const getProgressPercentage = () => {
-    const s = statusStr(order?.order_status);
-    if (s === "delivered" || s === "completed") return 100;
-    // If status contains shipping/way, the truck is moving
-    if (s.includes("way") || s.includes("shipping") || s === "shipped")
-      return 85;
-    // Since you said it's assigned immediately, we are at 65% minimum if not delivered
-    if (order?.courier_details || s.includes("assign")) return 65;
-    return 25;
+  const getCurrentStepIndex = () => {
+    if (!order) return -1;
+    const status = order.order_status?.toLowerCase();
+
+    // Map backend statuses to step indices
+    const statusMap = {
+      pending: 0,
+      confirmed: 1,
+      courier_assigned: 2,
+      in_progress: 3,
+      on_the_way: 3, // Also map to in_progress
+      delivered: 4,
+      completed: 4,
+    };
+
+    return statusMap[status] !== undefined ? statusMap[status] : -1;
   };
 
-  const progressWidth = getProgressPercentage();
+  const isStepCompleted = (stepIndex) => {
+    const currentIndex = getCurrentStepIndex();
+    return currentIndex >= stepIndex;
+  };
 
-  if (loading)
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleString(isArabic ? "ar-EG" : "en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Get courier info from order response
+  const getCourierInfo = () => {
+    if (!order) return null;
+
+    // Check if courier is assigned and has info
+    if (order.courier_assigned && order.courier_name) {
+      return {
+        name: order.courier_name,
+        phone: order.courier_phone || null,
+      };
+    }
+
+    return null;
+  };
+
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin text-[#708A58]" />
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-green-600 mx-auto mb-4" />
+          <p className="text-gray-600">
+            {isArabic ? "جاري تحميل بيانات الطلب..." : "Loading order data..."}
+          </p>
+        </div>
       </div>
     );
-  if (error || !order)
-    return <div className="p-20 text-center">Order Not Found</div>;
+  }
+
+  if (error || !order) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">
+              {isArabic ? "الطلب غير موجود" : "Order Not Found"}
+            </h2>
+            <p className="text-gray-600 mb-4">
+              {isArabic
+                ? "لم نتمكن من العثور على هذا الطلب"
+                : "We couldn't find this order"}
+            </p>
+            <Button onClick={() => navigate("/orders")}>
+              {isArabic ? "العودة إلى الطلبات" : "Back to Orders"}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const isDelivered =
+    order.order_status === "delivered" || order.order_status === "completed";
+  const courierInfo = getCourierInfo();
 
   return (
-    <div
-      className="min-h-screen bg-[#F9FAFB] flex flex-col"
-      dir={isArabic ? "rtl" : "ltr"}
-    >
+    <div className="min-h-screen bg-gray-50" dir={isArabic ? "rtl" : "ltr"}>
       <Navbar />
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-black">
-            {isArabic ? "تتبع مباشر" : "Live Tracking"}
-          </h1>
+
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={() => navigate("/orders")}
-            className="rounded-xl bg-white"
+            className="mb-4"
           >
-            {isArabic ? (
-              <ArrowRight className="ml-2 w-4" />
-            ) : (
-              <ArrowLeft className="mr-2 w-4" />
-            )}
-            {isArabic ? "العودة" : "Back"}
+            <ArrowLeft
+              className={`w-4 h-4 ${isArabic ? "ml-2 rotate-180" : "mr-2"}`}
+            />
+            {isArabic ? "العودة إلى الطلبات" : "Back to Orders"}
           </Button>
+          <h1 className="text-3xl font-bold">
+            {isArabic ? "تتبع الطلب" : "Order Tracking"}
+          </h1>
+          <p className="text-gray-600 mt-1">
+            {isArabic ? "رقم الطلب:" : "Order ID:"} {order.order_id}
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Status Sidebar */}
-          <div className="lg:col-span-4 space-y-6">
-            <OrderStatusCard order={order} isArabic={isArabic} />
-            <OrderTimeline
-              order={order}
-              isArabic={isArabic}
-              progress={progressWidth}
-            />
-          </div>
-
-          {/* Main Tracking View */}
-          <div className="lg:col-span-8 space-y-6">
-            <Card className="border-0 shadow-sm rounded-3xl overflow-hidden bg-white">
-              <CardContent className="p-0">
-                {/* 3. Live Map Component */}
-                <div className="h-[400px] bg-gray-100 relative">
-                  {order?.courier_details ? (
-                    <CourierMap
-                      order={order}
-                      trackingData={tracking}
-                      isArabic={isArabic}
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gray-50 italic text-gray-400">
-                      {isArabic
-                        ? "جاري تحميل الخريطة..."
-                        : "Loading Live Map..."}
-                    </div>
-                  )}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Side - Order Details */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Order Summary Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className={isArabic ? "font-arabic" : ""}>
+                  {isArabic ? "تفاصيل الطلب" : "Order Details"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <Package className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600">
+                      {isArabic ? "نوع الطلب" : "Order Type"}
+                    </p>
+                    <p className="font-semibold capitalize">
+                      {order.order_type}
+                    </p>
+                  </div>
                 </div>
 
-                {/* Progress Bar & Courier Info */}
-                <div className="p-8">
-                  <div className="relative mb-12 px-4">
-                    <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-100 -translate-y-1/2 rounded-full" />
-                    <div
-                      className="absolute top-1/2 left-0 h-1 bg-[#708A58] -translate-y-1/2 transition-all duration-1000 rounded-full"
-                      style={{ width: `${progressWidth}%` }}
-                    />
-                    <div className="relative z-10 flex justify-between">
-                      <Package
-                        className={
-                          progressWidth >= 25
-                            ? "text-[#708A58]"
-                            : "text-gray-300"
-                        }
-                      />
-                      <Truck
-                        className={
-                          progressWidth >= 65
-                            ? "text-[#708A58]"
-                            : "text-gray-300"
-                        }
-                      />
-                      <CheckCircle
-                        className={
-                          progressWidth >= 100
-                            ? "text-[#708A58]"
-                            : "text-gray-300"
-                        }
-                      />
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <MapPin className="w-5 h-5 text-blue-600" />
                   </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600">
+                      {isArabic ? "عنوان التوصيل" : "Delivery Address"}
+                    </p>
+                    <p className="font-semibold text-sm">
+                      {order.delivery_address}
+                    </p>
+                  </div>
+                </div>
 
-                  {/* Driver Card */}
-                  <div className="bg-gray-50 rounded-2xl p-6 flex items-center gap-6 border border-gray-100">
-                    <div className="w-16 h-16 bg-[#708A58] rounded-full flex items-center justify-center text-white text-xl font-bold">
-                      {order.courier_details?.name?.[0] || "C"}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600">
+                      {isArabic ? "تاريخ الطلب" : "Order Date"}
+                    </p>
+                    <p className="font-semibold text-sm">
+                      {formatDate(order.created_at)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">
+                      {isArabic ? "الإجمالي" : "Total"}
+                    </span>
+                    <span className="text-2xl font-bold text-green-600">
+                      ${order.total_price}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-sm text-gray-600">
+                      {isArabic ? "حالة الدفع" : "Payment Status"}
+                    </span>
+                    <span
+                      className={`text-sm font-semibold ${
+                        order.payment_status === "paid"
+                          ? "text-green-600"
+                          : "text-orange-600"
+                      }`}
+                    >
+                      {order.payment_status === "paid"
+                        ? isArabic
+                          ? "تم الدفع"
+                          : "Paid"
+                        : isArabic
+                        ? "قيد الانتظار"
+                        : "Pending"}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Courier Info Card - Only show if courier info exists */}
+            {courierInfo && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className={isArabic ? "font-arabic" : ""}>
+                    {isArabic ? "معلومات السائق" : "Courier Information"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                      {courierInfo.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-bold text-gray-900">
-                        {order.courier_details?.name || "Courier"}
-                      </h4>
-                      <p className="text-sm text-gray-500">
-                        {statusStr(order.order_status) === "preparing"
-                          ? isArabic
-                            ? "يتم تجهيز الطلب"
-                            : "Preparing your order"
-                          : isArabic
-                          ? "في الطريق إليك"
-                          : "On the way"}
+                      <p className="font-semibold text-lg">
+                        {courierInfo.name}
+                      </p>
+                      {courierInfo.phone && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <Phone className="w-4 h-4 text-gray-600" />
+                          <span className="text-sm text-gray-600">
+                            {courierInfo.phone}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {tracking?.latest_location?.distance_remaining && (
+                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                      <p className="text-sm text-blue-900">
+                        {isArabic ? "المسافة المتبقية:" : "Distance remaining:"}
+                      </p>
+                      <p className="font-semibold text-blue-900">
+                        {tracking.latest_location.distance_remaining.toFixed(2)}{" "}
+                        km
                       </p>
                     </div>
-                    <Button className="rounded-full px-8 bg-[#708A58] hover:bg-[#5f754a]">
-                      {isArabic ? "اتصال" : "Call"}
-                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Status Info */}
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 bg-blue-600 rounded-full animate-pulse" />
+                  <div>
+                    <p className="font-semibold text-blue-900">
+                      {isArabic ? "الحالة الحالية" : "Current Status"}
+                    </p>
+                    <p className="text-sm text-blue-800 capitalize">
+                      {order.order_status.replace(/_/g, " ")}
+                    </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* Right Side - Progress Tracking or Delivered State */}
+          <div className="lg:col-span-2">
+            {!isDelivered ? (
+              /* Progress Tracking */
+              <Card className="h-full">
+                <CardHeader>
+                  <CardTitle className={isArabic ? "font-arabic" : ""}>
+                    {isArabic ? "حالة الطلب" : "Order Status"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-8">
+                    {statusSteps.map((step, index) => {
+                      const Icon = step.icon;
+                      const completed = isStepCompleted(index);
+                      const isCurrent = getCurrentStepIndex() === index;
+
+                      return (
+                        <div
+                          key={step.key}
+                          className="relative flex items-start gap-4"
+                        >
+                          {/* Vertical Line */}
+                          {index < statusSteps.length - 1 && (
+                            <div
+                              className={`absolute ${
+                                isArabic ? "right-6" : "left-6"
+                              } top-12 w-0.5 h-16 ${
+                                completed ? "bg-green-600" : "bg-gray-300"
+                              }`}
+                            />
+                          )}
+
+                          {/* Icon Circle */}
+                          <div
+                            className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+                              completed
+                                ? "bg-green-600 text-white shadow-lg"
+                                : "bg-gray-200 text-gray-400"
+                            } ${isCurrent ? "ring-4 ring-green-200" : ""}`}
+                          >
+                            <Icon className="w-6 h-6" />
+                          </div>
+
+                          {/* Status Info */}
+                          <div className="flex-1 pt-2">
+                            <h3
+                              className={`font-semibold text-lg ${
+                                completed ? "text-gray-900" : "text-gray-400"
+                              }`}
+                            >
+                              {step.label}
+                            </h3>
+                            {completed && (
+                              <p className="text-sm text-gray-600 mt-1">
+                                {isCurrent
+                                  ? isArabic
+                                    ? "جاري التنفيذ"
+                                    : "In Progress"
+                                  : isArabic
+                                  ? "مكتمل"
+                                  : "Completed"}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Checkmark */}
+                          {completed && !isCurrent && (
+                            <CheckCircle2 className="w-6 h-6 text-green-600" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Tracking Logs */}
+                  {tracking &&
+                    tracking.tracking_logs &&
+                    tracking.tracking_logs.length > 0 && (
+                      <div className="mt-8 p-4 bg-gray-50 rounded-lg">
+                        <h4 className="font-semibold mb-3">
+                          {isArabic ? "سجل التتبع" : "Tracking History"}
+                        </h4>
+                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                          {tracking.tracking_logs.map((log, index) => (
+                            <div
+                              key={index}
+                              className="text-sm text-gray-600 flex justify-between items-center"
+                            >
+                              <span>
+                                {isArabic ? "الموقع:" : "Location:"}{" "}
+                                {log.latitude.toFixed(4)},{" "}
+                                {log.longitude.toFixed(4)}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {formatDate(log.timestamp)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Live Updates Indicator */}
+                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse" />
+                      <p className="text-sm text-blue-900 font-medium">
+                        {isArabic
+                          ? "يتم التحديث التلقائي كل 5 ثواني"
+                          : "Auto-updating every 5 seconds"}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              /* Delivered State */
+              <Card className="h-full border-2 border-green-500">
+                <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6">
+                    <PartyPopper className="w-12 h-12 text-green-600" />
+                  </div>
+                  <h2 className="text-3xl font-bold text-green-600 mb-2">
+                    {isArabic ? "تم التوصيل بنجاح!" : "Successfully Delivered!"}
+                  </h2>
+                  <p className="text-gray-600 text-lg mb-8">
+                    {isArabic
+                      ? "تم توصيل طلبك بنجاح"
+                      : "Your order has been delivered successfully"}
+                  </p>
+
+                  {order.delivered_at && (
+                    <div className="bg-gray-50 rounded-lg p-4 mb-8">
+                      <p className="text-sm text-gray-600 mb-1">
+                        {isArabic ? "تاريخ التوصيل" : "Delivered On"}
+                      </p>
+                      <p className="font-semibold">
+                        {formatDate(order.delivered_at)}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <Button
+                      size="lg"
+                      onClick={() => navigate("/orders")}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      {isArabic ? "عرض جميع الطلبات" : "View All Orders"}
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      onClick={() => navigate("/marketplace")}
+                    >
+                      {isArabic ? "متابعة التسوق" : "Continue Shopping"}
+                    </Button>
+                  </div>
+
+                  {/* Celebration Animation */}
+                  <div className="mt-8 flex gap-2">
+                    {[...Array(5)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-2 h-2 bg-green-600 rounded-full animate-bounce"
+                        style={{ animationDelay: `${i * 0.1}s` }}
+                      />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </div>
-      </main>
+      </div>
+
       <Footer />
     </div>
   );

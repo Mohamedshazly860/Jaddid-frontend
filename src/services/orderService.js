@@ -9,6 +9,9 @@ const orderService = {
   assignCourier: (orderId) => {
     return api.post(`/logistics/order/${orderId}/assign/`);
   },
+  getCourierInfo: (assignmentId) => {
+    return api.get(`/logistics/assignment/${assignmentId}/`);
+  },
   startDelivery: (assignmentId) => {
     return api.post(`/logistics/assignment/${assignmentId}/start/`);
   },
