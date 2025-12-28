@@ -29,13 +29,7 @@ const communityService = {
     getAll: (params) => api.get("/community/notifications/", { params }),
     // Try common notification unread-count endpoints to avoid 404s
     getUnreadCount: async () => {
-      const endpoints = [
-        "/community/notifications/unread-count/",
-        "/notifications/unread-count/",
-        "/community/notifications/count/",
-        "/notifications/count/",
-        "/community/notifications/unread_count/",
-      ];
+      const endpoints = ["/community/notifications/unread_count/"];
       for (const ep of endpoints) {
         try {
           const res = await api.get(ep);

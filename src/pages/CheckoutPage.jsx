@@ -52,7 +52,7 @@ import "leaflet/dist/leaflet.css";
 
 // Initialize Stripe with your publishable key
 const stripePromise = loadStripe(
-  "pk_test_51SiINbRzio7GBwIbdpjIaEKxg4h61jCDpxnJAx1bUZbhOMlHqFPTsqGrmPwzLtAGnUzSPg0JgDDL6yV05e2nSQvB0014bCbij9"
+  "pk_test_51SjQkcK65lNEvJYPLfZoTGETICTt4w2wGnB8WcILuOZhA7gbo8HleGdxSpEYtKhUgsrxeIxSOMbO5LHt5pgJyYV2004BfufJlT"
 );
 
 delete L.Icon.Default.prototype._getIconUrl;
