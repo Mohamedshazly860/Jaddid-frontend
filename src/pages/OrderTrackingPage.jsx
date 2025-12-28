@@ -17,9 +17,48 @@ import {
   Phone,
   ArrowLeft,
   PartyPopper,
+  Navigation,
 } from "lucide-react";
 import ordersService from "@/services/ordersService";
 import { useToast } from "@/hooks/use-toast";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+} from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+
+// Fix Leaflet default marker icons
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+  iconUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+});
+
+// Custom courier icon (green truck)
+const courierIcon = new L.Icon({
+  iconUrl:
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='%2316a34a'%3E%3Cpath d='M18 18.5a1.5 1.5 0 0 1-1 1.4V21a1 1 0 0 1-2 0v-1H9v1a1 1 0 0 1-2 0v-1.1a1.5 1.5 0 0 1-1-1.4v-2a6 6 0 0 1 1-3.3V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6.2a6 6 0 0 1 1 3.3v2zM9 6h6v3H9V6zm9 10.5V15a4 4 0 0 0-8 0v1.5a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5z'/%3E%3C/svg%3E",
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -40],
+});
+
+// Custom destination icon (red pin)
+const destinationIcon = new L.Icon({
+  iconUrl:
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='%23dc2626'%3E%3Cpath d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'/%3E%3C/svg%3E",
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -40],
+});
 
 const OrderTrackingPage = () => {
   const { orderId } = useParams();
@@ -33,7 +72,8 @@ const OrderTrackingPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isSimulationTriggered, setIsSimulationTriggered] = useState(false);
-  // Order status progression - matches your backend statuses
+
+  // Order status progression
   const statusSteps = [
     {
       key: "pending",
@@ -98,8 +138,6 @@ const OrderTrackingPage = () => {
 
   useEffect(() => {
     const triggerSimulation = async () => {
-      // Only trigger if order is in progress, we have an assignment ID,
-      // we haven't triggered it yet in this session, and logs are empty.
       if (
         order &&
         order.order_status === "in_progress" &&
@@ -114,14 +152,10 @@ const OrderTrackingPage = () => {
             order.assignment_id
           );
 
-          // Use the startDelivery endpoint from your orderService
           await ordersService.startDelivery(order.assignment_id);
-
-          // Refresh data immediately to get the first generated log
           fetchOrderData();
         } catch (err) {
           console.error("Failed to auto-start delivery simulation:", err);
-          // Reset so it can try again on the next poll if it failed
           setIsSimulationTriggered(false);
         }
       }
@@ -155,13 +189,12 @@ const OrderTrackingPage = () => {
     if (!order) return -1;
     const status = order.order_status?.toLowerCase();
 
-    // Map backend statuses to step indices
     const statusMap = {
       pending: 0,
       confirmed: 1,
       courier_assigned: 2,
       in_progress: 3,
-      on_the_way: 3, // Also map to in_progress
+      on_the_way: 3,
       delivered: 4,
       completed: 4,
     };
@@ -186,11 +219,9 @@ const OrderTrackingPage = () => {
     });
   };
 
-  // Get courier info from order response
   const getCourierInfo = () => {
     if (!order) return null;
 
-    // Check if courier is assigned and has info
     if (order.courier_assigned && order.courier_name) {
       return {
         name: order.courier_name,
@@ -199,6 +230,32 @@ const OrderTrackingPage = () => {
     }
 
     return null;
+  };
+
+  // Get courier's current location from tracking data
+  const getCourierLocation = () => {
+    if (!tracking?.latest_location) return null;
+
+    return {
+      lat: tracking.latest_location.latitude,
+      lng: tracking.latest_location.longitude,
+    };
+  };
+
+  // Get customer/destination location
+  const getDestinationLocation = () => {
+    if (!order?.customer_lat || !order?.customer_lng) return null;
+
+    return {
+      lat: order.customer_lat,
+      lng: order.customer_lng,
+    };
+  };
+
+  // Check if we should show the map
+  const shouldShowMap = () => {
+    const activeStatuses = ["in_progress", "on_the_way"];
+    return order && activeStatuses.includes(order.order_status);
   };
 
   if (loading) {
@@ -240,6 +297,8 @@ const OrderTrackingPage = () => {
   const isDelivered =
     order.order_status === "delivered" || order.order_status === "completed";
   const courierInfo = getCourierInfo();
+  const courierLocation = getCourierLocation();
+  const destinationLocation = getDestinationLocation();
 
   return (
     <div className="min-h-screen bg-gray-50" dir={isArabic ? "rtl" : "ltr"}>
@@ -281,13 +340,43 @@ const OrderTrackingPage = () => {
                   <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                     <Package className="w-5 h-5 text-green-600" />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-600">
-                      {isArabic ? "نوع الطلب" : "Order Type"}
-                    </p>
-                    <p className="font-semibold capitalize">
-                      {order.order_type}
-                    </p>
+                  {/* Items Detail Section */}
+                  <div className="flex flex-col gap-2 py-3 border-b border-gray-100">
+                    <div className="flex items-start gap-2 text-gray-500 mb-1">
+                      <span className="text-sm font-medium">
+                        {isArabic ? "الأصناف المطلوبة" : "Ordered Items"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {order.items &&
+                        order.items.map((item, index) => (
+                          <div
+                            key={index}
+                            className="flex justify-between items-start bg-gray-50 p-2 rounded-md"
+                          >
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-gray-900">
+                                {/* Display product title if available, otherwise material name  */}
+                                {item.product_title || item.material_name}
+                              </span>
+                              <span className="text-xs text-blue-600 font-medium uppercase tracking-wider">
+                                {/* Determine type based on which field has data  */}
+                                {item.product_title
+                                  ? isArabic
+                                    ? "منتج"
+                                    : "Product"
+                                  : isArabic
+                                  ? "خامة"
+                                  : "Material"}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              x{item.quantity}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
                   </div>
                 </div>
 
@@ -352,7 +441,7 @@ const OrderTrackingPage = () => {
               </CardContent>
             </Card>
 
-            {/* Courier Info Card - Only show if courier info exists */}
+            {/* Courier Info Card */}
             {courierInfo && (
               <Card>
                 <CardHeader>
@@ -412,10 +501,229 @@ const OrderTrackingPage = () => {
             </Card>
           </div>
 
-          {/* Right Side - Progress Tracking or Delivered State */}
+          {/* Right Side - Map or Progress Tracking or Delivered State */}
           <div className="lg:col-span-2">
-            {!isDelivered ? (
-              /* Progress Tracking */
+            {isDelivered ? (
+              /* Delivered State */
+              <Card className="h-full border-2 border-green-500">
+                <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6">
+                    <PartyPopper className="w-12 h-12 text-green-600" />
+                  </div>
+                  <h2 className="text-3xl font-bold text-green-600 mb-2">
+                    {isArabic ? "تم التوصيل بنجاح!" : "Successfully Delivered!"}
+                  </h2>
+                  <p className="text-gray-600 text-lg mb-8">
+                    {isArabic
+                      ? "تم توصيل طلبك بنجاح"
+                      : "Your order has been delivered successfully"}
+                  </p>
+
+                  {order.delivered_at && (
+                    <div className="bg-gray-50 rounded-lg p-4 mb-8">
+                      <p className="text-sm text-gray-600 mb-1">
+                        {isArabic ? "تاريخ التوصيل" : "Delivered On"}
+                      </p>
+                      <p className="font-semibold">
+                        {formatDate(order.delivered_at)}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <Button
+                      size="lg"
+                      onClick={() => navigate("/orders")}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      {isArabic ? "عرض جميع الطلبات" : "View All Orders"}
+                    </Button>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      onClick={() => navigate("/marketplace")}
+                    >
+                      {isArabic ? "متابعة التسوق" : "Continue Shopping"}
+                    </Button>
+                  </div>
+
+                  <div className="mt-8 flex gap-2">
+                    {[...Array(5)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-2 h-2 bg-green-600 rounded-full animate-bounce"
+                        style={{ animationDelay: `${i * 0.1}s` }}
+                      />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : shouldShowMap() && courierLocation && destinationLocation ? (
+              /* Live Map View */
+              <Card className="h-full">
+                <CardHeader>
+                  <CardTitle
+                    className={`flex items-center gap-2 ${
+                      isArabic ? "font-arabic" : ""
+                    }`}
+                  >
+                    <Navigation className="w-5 h-5 text-green-600" />
+                    {isArabic ? "تتبع مباشر" : "Live Tracking"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div
+                    className="rounded-lg overflow-hidden border-2 border-gray-200"
+                    style={{ height: "500px" }}
+                  >
+                    <MapContainer
+                      center={[courierLocation.lat, courierLocation.lng]}
+                      zoom={13}
+                      style={{ height: "100%", width: "100%" }}
+                      key={`${courierLocation.lat}-${courierLocation.lng}`}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+
+                      {/* Courier Marker */}
+                      <Marker
+                        position={[courierLocation.lat, courierLocation.lng]}
+                        icon={courierIcon}
+                      >
+                        <Popup>
+                          <div className="text-center">
+                            <p className="font-semibold">
+                              {isArabic ? "السائق" : "Courier"}
+                            </p>
+                            <p className="text-sm">
+                              {courierInfo?.name || "Courier"}
+                            </p>
+                          </div>
+                        </Popup>
+                      </Marker>
+
+                      {/* Destination Marker */}
+                      <Marker
+                        position={[
+                          destinationLocation.lat,
+                          destinationLocation.lng,
+                        ]}
+                        icon={destinationIcon}
+                      >
+                        <Popup>
+                          <div className="text-center">
+                            <p className="font-semibold">
+                              {isArabic ? "وجهتك" : "Your Location"}
+                            </p>
+                            <p className="text-sm">{order.delivery_address}</p>
+                          </div>
+                        </Popup>
+                      </Marker>
+
+                      {/* Line between courier and destination */}
+                      <Polyline
+                        positions={[
+                          [courierLocation.lat, courierLocation.lng],
+                          [destinationLocation.lat, destinationLocation.lng],
+                        ]}
+                        color="#16a34a"
+                        weight={3}
+                        opacity={0.6}
+                        dashArray="10, 10"
+                      />
+                    </MapContainer>
+                  </div>
+
+                  {/* Map Info Banner */}
+                  <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-2 h-2 bg-green-600 rounded-full animate-pulse" />
+                        <div>
+                          <p className="text-sm font-medium text-green-900">
+                            {isArabic
+                              ? "السائق في الطريق إليك"
+                              : "Courier is on the way"}
+                          </p>
+                          <p className="text-xs text-green-700">
+                            {isArabic
+                              ? "يتم التحديث كل 5 ثواني"
+                              : "Updates every 5 seconds"}
+                          </p>
+                        </div>
+                      </div>
+                      {tracking?.latest_location?.distance_remaining && (
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-green-900">
+                            {tracking.latest_location.distance_remaining.toFixed(
+                              2
+                            )}{" "}
+                            km
+                          </p>
+                          <p className="text-xs text-green-700">
+                            {isArabic ? "متبقي" : "remaining"}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Progress Steps - Compact Version */}
+                  <div className="mt-6 space-y-4">
+                    <h4 className="font-semibold text-sm text-gray-700">
+                      {isArabic ? "مراحل التوصيل" : "Delivery Progress"}
+                    </h4>
+                    <div className="flex items-center justify-between">
+                      {statusSteps.map((step, index) => {
+                        const Icon = step.icon;
+                        const completed = isStepCompleted(index);
+                        const isCurrent = getCurrentStepIndex() === index;
+
+                        return (
+                          <div
+                            key={step.key}
+                            className="flex flex-col items-center flex-1"
+                          >
+                            <div
+                              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                                completed
+                                  ? "bg-green-600 text-white"
+                                  : "bg-gray-200 text-gray-400"
+                              } ${isCurrent ? "ring-4 ring-green-200" : ""}`}
+                            >
+                              <Icon className="w-5 h-5" />
+                            </div>
+                            <p
+                              className={`mt-2 text-xs text-center ${
+                                completed
+                                  ? "text-gray-900 font-medium"
+                                  : "text-gray-400"
+                              }`}
+                            >
+                              {step.label}
+                            </p>
+                            {index < statusSteps.length - 1 && (
+                              <div
+                                className={`absolute w-full h-0.5 top-5 left-1/2 ${
+                                  completed ? "bg-green-600" : "bg-gray-300"
+                                }`}
+                                style={{
+                                  width: "calc(100% - 40px)",
+                                  transform: "translateX(20px)",
+                                }}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              /* Progress Tracking (fallback when map shouldn't show) */
               <Card className="h-full">
                 <CardHeader>
                   <CardTitle className={isArabic ? "font-arabic" : ""}>
@@ -434,7 +742,6 @@ const OrderTrackingPage = () => {
                           key={step.key}
                           className="relative flex items-start gap-4"
                         >
-                          {/* Vertical Line */}
                           {index < statusSteps.length - 1 && (
                             <div
                               className={`absolute ${
@@ -445,7 +752,6 @@ const OrderTrackingPage = () => {
                             />
                           )}
 
-                          {/* Icon Circle */}
                           <div
                             className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center transition-all ${
                               completed
@@ -456,7 +762,6 @@ const OrderTrackingPage = () => {
                             <Icon className="w-6 h-6" />
                           </div>
 
-                          {/* Status Info */}
                           <div className="flex-1 pt-2">
                             <h3
                               className={`font-semibold text-lg ${
@@ -478,7 +783,6 @@ const OrderTrackingPage = () => {
                             )}
                           </div>
 
-                          {/* Checkmark */}
                           {completed && !isCurrent && (
                             <CheckCircle2 className="w-6 h-6 text-green-600" />
                           )}
@@ -525,62 +829,6 @@ const OrderTrackingPage = () => {
                           : "Auto-updating every 5 seconds"}
                       </p>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              /* Delivered State */
-              <Card className="h-full border-2 border-green-500">
-                <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6">
-                    <PartyPopper className="w-12 h-12 text-green-600" />
-                  </div>
-                  <h2 className="text-3xl font-bold text-green-600 mb-2">
-                    {isArabic ? "تم التوصيل بنجاح!" : "Successfully Delivered!"}
-                  </h2>
-                  <p className="text-gray-600 text-lg mb-8">
-                    {isArabic
-                      ? "تم توصيل طلبك بنجاح"
-                      : "Your order has been delivered successfully"}
-                  </p>
-
-                  {order.delivered_at && (
-                    <div className="bg-gray-50 rounded-lg p-4 mb-8">
-                      <p className="text-sm text-gray-600 mb-1">
-                        {isArabic ? "تاريخ التوصيل" : "Delivered On"}
-                      </p>
-                      <p className="font-semibold">
-                        {formatDate(order.delivered_at)}
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <Button
-                      size="lg"
-                      onClick={() => navigate("/orders")}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      {isArabic ? "عرض جميع الطلبات" : "View All Orders"}
-                    </Button>
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      onClick={() => navigate("/marketplace")}
-                    >
-                      {isArabic ? "متابعة التسوق" : "Continue Shopping"}
-                    </Button>
-                  </div>
-
-                  {/* Celebration Animation */}
-                  <div className="mt-8 flex gap-2">
-                    {[...Array(5)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="w-2 h-2 bg-green-600 rounded-full animate-bounce"
-                        style={{ animationDelay: `${i * 0.1}s` }}
-                      />
-                    ))}
                   </div>
                 </CardContent>
               </Card>

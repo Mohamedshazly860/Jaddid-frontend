@@ -182,7 +182,7 @@ const StripePaymentForm = ({
         color: "#9e2146",
       },
     },
-    hidePostalCode: true,
+    hidePostalCode: true, // This removes the ZIP code field
   };
 
   return (
@@ -279,6 +279,7 @@ const CheckoutPage = () => {
   });
 
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [stockErrors, setStockErrors] = useState([]);
 
   const handleConfirmLocation = () => {
     setCustomerInfo((prev) => ({
@@ -321,6 +322,9 @@ const CheckoutPage = () => {
       setLoading(true);
       const response = await marketplaceService.cart.get();
       setCart(response.data);
+
+      // Validate stock immediately after fetching cart
+      validateStock(response.data);
     } catch (error) {
       toast({
         title: isArabic ? "خطأ" : "Error",
@@ -332,8 +336,60 @@ const CheckoutPage = () => {
     }
   };
 
+  const validateStock = (cartData) => {
+    const errors = [];
+
+    cartData?.items?.forEach((item) => {
+      const itemData = item.product || item.material_listing;
+      const availableStock =
+        itemData?.stock_quantity || itemData?.quantity || 0;
+      const requestedQuantity = Math.round(parseFloat(item.quantity) || 0);
+
+      if (requestedQuantity > availableStock) {
+        errors.push({
+          itemId: item.id,
+          title: itemData?.title || "Item",
+          requested: requestedQuantity,
+          available: availableStock,
+        });
+      }
+    });
+
+    setStockErrors(errors);
+
+    // Show toast if there are stock errors
+    if (errors.length > 0) {
+      toast({
+        title: isArabic ? "تحذير المخزون" : "Stock Warning",
+        description: isArabic
+          ? `${errors.length} عنصر يتجاوز المخزون المتاح`
+          : `${errors.length} item(s) exceed available stock`,
+        variant: "destructive",
+      });
+    }
+  };
+
   const updateQuantity = async (itemId, newQuantity) => {
     const qtyNum = Math.max(1, Math.round(parseFloat(newQuantity) || 0));
+
+    // Find the item to check stock
+    const item = cart.items.find((i) => i.id === itemId);
+    if (item) {
+      const itemData = item.product || item.material_listing;
+      const availableStock =
+        itemData?.stock_quantity || itemData?.quantity || 0;
+
+      if (qtyNum > availableStock) {
+        toast({
+          title: isArabic ? "خطأ في المخزون" : "Stock Error",
+          description: isArabic
+            ? `المخزون المتاح فقط ${availableStock}`
+            : `Only ${availableStock} available in stock`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
 
     setCart((prevCart) => ({
       ...prevCart,
@@ -360,6 +416,7 @@ const CheckoutPage = () => {
       });
       const response = await marketplaceService.cart.get();
       setCart(response.data);
+      validateStock(response.data);
     } catch (error) {
       fetchCart();
       toast({
@@ -405,6 +462,27 @@ const CheckoutPage = () => {
       return;
     }
 
+    // Check for stock errors before proceeding
+    if (stockErrors.length > 0) {
+      const errorMessages = stockErrors
+        .map(
+          (err) =>
+            `${err.title}: ${isArabic ? "طلبت" : "Requested"} ${
+              err.requested
+            }, ${isArabic ? "متاح" : "Available"} ${err.available}`
+        )
+        .join("\n");
+
+      toast({
+        title: isArabic ? "خطأ في المخزون" : "Stock Error",
+        description: isArabic
+          ? "بعض العناصر تتجاوز المخزون المتاح. يرجى تعديل الكميات."
+          : "Some items exceed available stock. Please adjust quantities.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Open payment dialog
     setShowPaymentDialog(true);
   };
@@ -437,7 +515,8 @@ const CheckoutPage = () => {
     setIsProcessing(true);
 
     try {
-      const itemsBySeller = {};
+      // Group items by seller AND order type
+      const orderGroups = {};
 
       cart.items.forEach((item) => {
         const rawSellerId =
@@ -451,42 +530,54 @@ const CheckoutPage = () => {
           return;
         }
 
-        const sellerKey = String(rawSellerId);
-        if (!itemsBySeller[sellerKey]) itemsBySeller[sellerKey] = [];
-        itemsBySeller[sellerKey].push(item);
+        const orderType = item.product ? "product" : "material";
+        const groupKey = `${rawSellerId}-${orderType}`;
+
+        if (!orderGroups[groupKey]) {
+          orderGroups[groupKey] = {
+            sellerId: String(rawSellerId),
+            orderType: orderType,
+            items: [],
+          };
+        }
+
+        orderGroups[groupKey].items.push(item);
       });
 
       let firstOrderId = null;
 
-      for (const [sellerId, sellerItems] of Object.entries(itemsBySeller)) {
+      // Create one order per group (seller + order type combination)
+      for (const group of Object.values(orderGroups)) {
         const orderData = {
-          seller_id: sellerId,
+          seller_id: group.sellerId,
           delivery_address: customerInfo.address,
           customer_lat: customerInfo.lat,
           customer_lng: customerInfo.lng,
-
-          // FIX: Use a more robust check for order_type
-          order_type: sellerItems[0]?.product ? "product" : "material",
-
-          stripe_payment_id: paymentIntentId,
-          payment_method: "card",
-          status: "pending",
-          items: sellerItems.map((item) => ({
+          order_type: group.orderType,
+          items: group.items.map((item) => ({
             product_id: item.product?.id || null,
             material_listing_id: item.material_listing?.id || null,
             quantity: Math.round(parseFloat(item.quantity) || 1),
+            unit_price: parseFloat(
+              item.product?.price || item.material_listing?.price_per_unit || 0
+            ),
+            unit: item.product ? "piece" : item.material_listing?.unit || "kg",
           })),
         };
-        console.log("Payload being sent to API:", {
-          payment_intent_id: paymentIntentId,
-          order_data: orderData,
+
+        console.log("Creating order with payment:", {
+          paymentIntentId,
+          orderData,
+          itemsCount: orderData.items.length,
         });
 
         // Confirm payment and create order
         const orderResponse = await ordersService.confirmPayment({
           payment_intent_id: paymentIntentId,
-          order_data: orderData, // Ensure this key matches your backend .get('order_data')
+          order_data: orderData,
         });
+
+        console.log("Order created:", orderResponse.data);
 
         if (!firstOrderId && orderResponse.data?.id) {
           firstOrderId = orderResponse.data.id;
@@ -533,6 +624,7 @@ const CheckoutPage = () => {
         title: isArabic ? "خطأ" : "Error",
         description:
           error.response?.data?.error ||
+          error.response?.data?.detail ||
           (isArabic ? "فشل إنشاء الطلب" : "Failed to create order"),
         variant: "destructive",
       });
@@ -622,11 +714,22 @@ const CheckoutPage = () => {
                         itemData?.images?.[0]?.image || itemData?.primary_image;
                       const imageUrl = getImageUrl(imagePath);
 
+                      // Check stock
+                      const availableStock =
+                        itemData?.stock_quantity || itemData?.quantity || 0;
+                      const requestedQuantity = Math.round(
+                        parseFloat(item.quantity) || 0
+                      );
+                      const hasStockError = requestedQuantity > availableStock;
+
                       return (
                         <div
                           key={item.id}
-                          className="flex flex-col sm:flex-row gap-4 p-4 border rounded-lg"
+                          className={`flex flex-col sm:flex-row gap-4 p-4 border rounded-lg ${
+                            hasStockError ? "border-red-500 bg-red-50" : ""
+                          }`}
                         >
+                          {/* Image */}
                           <div className="w-full sm:w-24 h-48 sm:h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                             {imageUrl ? (
                               <img
@@ -644,6 +747,7 @@ const CheckoutPage = () => {
                             )}
                           </div>
 
+                          {/* Details */}
                           <div className="flex-1 min-w-0">
                             <Link
                               to={`/marketplace/${itemType}/${itemData.id}`}
@@ -663,8 +767,32 @@ const CheckoutPage = () => {
                                   0)
                               ).toFixed(2)}
                             </p>
+
+                            {/* Stock Info */}
+                            <div className="mt-2">
+                              <p
+                                className={`text-xs ${
+                                  hasStockError
+                                    ? "text-red-600 font-semibold"
+                                    : "text-gray-500"
+                                }`}
+                              >
+                                {isArabic
+                                  ? "المخزون المتاح:"
+                                  : "Available stock:"}{" "}
+                                {availableStock}
+                              </p>
+                              {hasStockError && (
+                                <p className="text-xs text-red-600 font-semibold mt-1">
+                                  {isArabic
+                                    ? "⚠️ الكمية المطلوبة تتجاوز المخزون المتاح"
+                                    : "⚠️ Requested quantity exceeds available stock"}
+                                </p>
+                              )}
+                            </div>
                           </div>
 
+                          {/* Quantity */}
                           <div className="flex flex-col items-stretch sm:items-end gap-3 sm:gap-2 w-full sm:w-auto">
                             <div className="flex items-center justify-center gap-2">
                               <Button
@@ -689,8 +817,11 @@ const CheckoutPage = () => {
                                   if (!isNaN(val) && val > 0)
                                     updateQuantity(item.id, val);
                                 }}
-                                className="w-20 text-center"
+                                className={`w-20 text-center ${
+                                  hasStockError ? "border-red-500" : ""
+                                }`}
                                 min="1"
+                                max={availableStock}
                                 step="1"
                                 disabled={isPaymentConfirmed}
                               />
