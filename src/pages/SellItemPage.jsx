@@ -15,8 +15,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
 import { Package, Leaf, Upload, X } from "lucide-react";
 import api from "../services/api";
 import { toast } from "../hooks/use-toast";
@@ -33,7 +43,10 @@ const SellItemPage = () => {
   const editType = searchParams.get("edit"); // 'product' or 'material'
   const editId = searchParams.get("id");
 
-  const [itemType, setItemType] = useState(editType || (searchParams.get("type") === "material" ? "material" : "product"));
+  const [itemType, setItemType] = useState(
+    editType ||
+      (searchParams.get("type") === "material" ? "material" : "product")
+  );
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [images, setImages] = useState([]);
@@ -45,7 +58,7 @@ const SellItemPage = () => {
     name: "",
     name_ar: "",
     description: "",
-    description_ar: ""
+    description_ar: "",
   });
   const [showNewMaterialForm, setShowNewMaterialForm] = useState(false);
   const [newMaterial, setNewMaterial] = useState({
@@ -53,7 +66,7 @@ const SellItemPage = () => {
     name_ar: "",
     category: "",
     description: "",
-    description_ar: ""
+    description_ar: "",
   });
 
   // Redirect if not logged in
@@ -61,7 +74,9 @@ const SellItemPage = () => {
     if (!isAuthenticated) {
       toast({
         title: isArabic ? "يجب تسجيل الدخول" : "Login Required",
-        description: isArabic ? "يرجى تسجيل الدخول لإضافة عناصر للبيع" : "Please login to sell items",
+        description: isArabic
+          ? "يرجى تسجيل الدخول لإضافة عناصر للبيع"
+          : "Please login to sell items",
         variant: "destructive",
       });
       navigate("/login");
@@ -76,69 +91,115 @@ const SellItemPage = () => {
         console.log("Fetching materials and categories...");
         const [materialsRes, categoriesRes] = await Promise.all([
           api.get("/marketplace/materials/"),
-          api.get("/marketplace/categories/")
+          api.get("/marketplace/categories/"),
         ]);
         console.log("Materials response:", materialsRes.data);
         console.log("Categories response:", categoriesRes.data);
-        
-        const fetchedMaterials = Array.isArray(materialsRes.data?.results) ? materialsRes.data.results : (Array.isArray(materialsRes.data) ? materialsRes.data : []);
-        let fetchedCategories = Array.isArray(categoriesRes.data?.results) ? categoriesRes.data.results : (Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
-        
+
+        const fetchedMaterials = Array.isArray(materialsRes.data?.results)
+          ? materialsRes.data.results
+          : Array.isArray(materialsRes.data)
+          ? materialsRes.data
+          : [];
+        let fetchedCategories = Array.isArray(categoriesRes.data?.results)
+          ? categoriesRes.data.results
+          : Array.isArray(categoriesRes.data)
+          ? categoriesRes.data
+          : [];
+
         // If no categories from backend, create default categories
         if (fetchedCategories.length === 0) {
-          console.warn("No categories found in backend. Creating default categories...");
-          
+          console.warn(
+            "No categories found in backend. Creating default categories..."
+          );
+
           const defaultCategories = [
-            { name: "Plastics", name_ar: "بلاستيك", description: "Plastic materials and products", description_ar: "مواد ومنتجات بلاستيكية" },
-            { name: "Paper & Cardboard", name_ar: "ورق وكرتون", description: "Paper and cardboard materials", description_ar: "مواد ورقية وكرتونية" },
-            { name: "Metals", name_ar: "معادن", description: "Metal materials and products", description_ar: "مواد ومنتجات معدنية" },
-            { name: "Glass", name_ar: "زجاج", description: "Glass materials and products", description_ar: "مواد ومنتجات زجاجية" },
-            { name: "Electronics", name_ar: "إلكترونيات", description: "Electronic materials and products", description_ar: "مواد ومنتجات إلكترونية" },
+            {
+              name: "Plastics",
+              name_ar: "بلاستيك",
+              description: "Plastic materials and products",
+              description_ar: "مواد ومنتجات بلاستيكية",
+            },
+            {
+              name: "Paper & Cardboard",
+              name_ar: "ورق وكرتون",
+              description: "Paper and cardboard materials",
+              description_ar: "مواد ورقية وكرتونية",
+            },
+            {
+              name: "Metals",
+              name_ar: "معادن",
+              description: "Metal materials and products",
+              description_ar: "مواد ومنتجات معدنية",
+            },
+            {
+              name: "Glass",
+              name_ar: "زجاج",
+              description: "Glass materials and products",
+              description_ar: "مواد ومنتجات زجاجية",
+            },
+            {
+              name: "Electronics",
+              name_ar: "إلكترونيات",
+              description: "Electronic materials and products",
+              description_ar: "مواد ومنتجات إلكترونية",
+            },
           ];
-          
+
           // Create categories in backend
           const createdCategories = [];
           for (const category of defaultCategories) {
             try {
               console.log(`Creating category: ${category.name}...`);
-              const response = await api.post("/marketplace/categories/", category);
+              const response = await api.post(
+                "/marketplace/categories/",
+                category
+              );
               createdCategories.push(response.data);
-              console.log(`✓ Created category: ${category.name}`, response.data);
+              console.log(
+                `✓ Created category: ${category.name}`,
+                response.data
+              );
             } catch (error) {
-              console.error(`✗ Error creating category ${category.name}:`, error.response?.data || error.message);
+              console.error(
+                `✗ Error creating category ${category.name}:`,
+                error.response?.data || error.message
+              );
               console.error(`Full error details:`, error.response);
               // Log each field error
               if (error.response?.data) {
-                Object.keys(error.response.data).forEach(field => {
+                Object.keys(error.response.data).forEach((field) => {
                   console.error(`  ${field}:`, error.response.data[field]);
                 });
               }
             }
           }
-          
+
           if (createdCategories.length > 0) {
             fetchedCategories = createdCategories;
             toast({
               title: isArabic ? "تم إنشاء التصنيفات" : "Categories Created",
-              description: isArabic 
+              description: isArabic
                 ? `تم إنشاء ${createdCategories.length} تصنيف في قاعدة البيانات بنجاح`
                 : `Successfully created ${createdCategories.length} categories in the database`,
               variant: "default",
             });
           } else {
             toast({
-              title: isArabic ? "خطأ في إنشاء التصنيفات" : "Error Creating Categories",
-              description: isArabic 
+              title: isArabic
+                ? "خطأ في إنشاء التصنيفات"
+                : "Error Creating Categories",
+              description: isArabic
                 ? "فشل إنشاء التصنيفات الافتراضية. يرجى التواصل مع الإدارة."
                 : "Failed to create default categories. Please contact admin.",
               variant: "destructive",
             });
           }
         }
-        
+
         setMaterials(fetchedMaterials);
         setCategories(fetchedCategories);
-        
+
         // Log final state
         console.log("✓ Final materials count:", fetchedMaterials.length);
         console.log("✓ Final categories count:", fetchedCategories.length);
@@ -146,13 +207,13 @@ const SellItemPage = () => {
       } catch (error) {
         console.error("Error fetching data:", error);
         console.error("Error details:", error.response?.data);
-        
+
         setMaterials([]);
         setCategories([]);
-        
+
         toast({
           title: isArabic ? "خطأ في تحميل البيانات" : "Error Loading Data",
-          description: isArabic 
+          description: isArabic
             ? "حدث خطأ في تحميل البيانات. يرجى المحاولة مرة أخرى."
             : "Error loading data. Please try again.",
           variant: "destructive",
@@ -168,15 +229,15 @@ const SellItemPage = () => {
   useEffect(() => {
     const loadItemData = async () => {
       if (!isEditMode) return;
-      
+
       try {
         setLoadingData(true);
         let response;
-        
-        if (editType === 'product') {
+
+        if (editType === "product") {
           response = await api.get(`/marketplace/products/${editId}/`);
           const product = response.data;
-          
+
           setProductData({
             title: product.title || "",
             title_ar: product.title_ar || "",
@@ -190,16 +251,16 @@ const SellItemPage = () => {
             longitude: product.longitude || "",
             category: product.category || "",
           });
-          
+
           // Load existing images
           if (product.images && product.images.length > 0) {
-            const imageUrls = product.images.map(img => img.image);
+            const imageUrls = product.images.map((img) => img.image);
             setPreviewUrls(imageUrls);
           }
-        } else if (editType === 'material') {
+        } else if (editType === "material") {
           response = await api.get(`/marketplace/material-listings/${editId}/`);
           const material = response.data;
-          
+
           setMaterialData({
             material: material.material?.id || "",
             title: material.title || "",
@@ -219,29 +280,33 @@ const SellItemPage = () => {
             notes: material.notes || "",
             custom_material_name: "",
           });
-          
+
           // Load existing image
           if (material.primary_image) {
             setPreviewUrls([material.primary_image]);
           }
         }
-        
+
         toast({
           title: isArabic ? "تم التحميل" : "Loaded",
-          description: isArabic ? "تم تحميل بيانات العنصر للتعديل" : "Item data loaded for editing",
+          description: isArabic
+            ? "تم تحميل بيانات العنصر للتعديل"
+            : "Item data loaded for editing",
         });
       } catch (error) {
         console.error("Error loading item data:", error);
         toast({
           title: isArabic ? "خطأ" : "Error",
-          description: isArabic ? "فشل تحميل بيانات العنصر" : "Failed to load item data",
+          description: isArabic
+            ? "فشل تحميل بيانات العنصر"
+            : "Failed to load item data",
           variant: "destructive",
         });
       } finally {
         setLoadingData(false);
       }
     };
-    
+
     loadItemData();
   }, [isEditMode, editType, editId, isArabic]);
 
@@ -326,29 +391,46 @@ const SellItemPage = () => {
 
     try {
       const formData = new FormData();
-      
+
       // If user selected "new" category option
       if (showNewCategoryForm && newCategory.name) {
         // Use the first available category as placeholder (backend requires category field)
         if (categories.length > 0) {
           formData.append("category", categories[0].id);
         }
-        
+
         // Add custom category info in description with special marker
         const customCategoryNote = `
 📋 طلب تصنيف جديد / New Category Request
 ────────────────────────────
 اسم التصنيف / Category Name: ${newCategory.name}
-${newCategory.name_ar ? `الاسم بالعربي / Arabic Name: ${newCategory.name_ar}` : ''}
-${newCategory.description ? `الوصف / Description: ${newCategory.description}` : ''}
-${newCategory.description_ar ? `الوصف بالعربي / Arabic Description: ${newCategory.description_ar}` : ''}
+${
+  newCategory.name_ar
+    ? `الاسم بالعربي / Arabic Name: ${newCategory.name_ar}`
+    : ""
+}
+${
+  newCategory.description
+    ? `الوصف / Description: ${newCategory.description}`
+    : ""
+}
+${
+  newCategory.description_ar
+    ? `الوصف بالعربي / Arabic Description: ${newCategory.description_ar}`
+    : ""
+}
 ────────────────────────────
 ⚠️ يرجى المراجعة والموافقة من الإدارة
 ⚠️ Please review and approve by admin
 
-${productData.description ? '\nوصف المنتج الأصلي / Original Product Description:\n' + productData.description : ''}
+${
+  productData.description
+    ? "\nوصف المنتج الأصلي / Original Product Description:\n" +
+      productData.description
+    : ""
+}
         `.trim();
-        
+
         formData.append("description", customCategoryNote);
         console.log("Adding custom category request:", newCategory.name);
       } else {
@@ -356,14 +438,16 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
         if (!productData.category) {
           toast({
             title: isArabic ? "خطأ" : "Error",
-            description: isArabic ? "يرجى اختيار تصنيف" : "Please select a category",
+            description: isArabic
+              ? "يرجى اختيار تصنيف"
+              : "Please select a category",
             variant: "destructive",
           });
           setLoading(false);
           return;
         }
         formData.append("category", productData.category);
-        
+
         // Add product data (except category which is already added)
         Object.keys(productData).forEach((key) => {
           if (key !== "category" && productData[key]) {
@@ -371,7 +455,7 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
           }
         });
       }
-      
+
       // Add remaining product data (except description and category)
       Object.keys(productData).forEach((key) => {
         if (key !== "category" && key !== "description" && productData[key]) {
@@ -385,7 +469,10 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
       });
 
       // Set status as draft if custom category, active otherwise
-      formData.append("status", (showNewCategoryForm && newCategory.name) ? "draft" : "active");
+      formData.append(
+        "status",
+        showNewCategoryForm && newCategory.name ? "draft" : "active"
+      );
 
       // Debug: Log FormData contents
       console.log("=== Product Submission Debug ===");
@@ -396,7 +483,9 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
       console.log("FormData entries:");
       for (let pair of formData.entries()) {
         if (pair[1] instanceof File) {
-          console.log(`  ${pair[0]}: [File] ${pair[1].name} (${pair[1].size} bytes)`);
+          console.log(
+            `  ${pair[0]}: [File] ${pair[1].name} (${pair[1].size} bytes)`
+          );
         } else {
           console.log(`  ${pair[0]}: ${pair[1]}`);
         }
@@ -404,25 +493,28 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
       console.log("================================");
 
       // Use PUT for edit, POST for create
-      const response = isEditMode && editType === 'product'
-        ? await api.put(`/marketplace/products/${editId}/`, formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          })
-        : await api.post("/marketplace/products/", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
+      const response =
+        isEditMode && editType === "product"
+          ? await api.put(`/marketplace/products/${editId}/`, formData, {
+              headers: { "Content-Type": "multipart/form-data" },
+            })
+          : await api.post("/marketplace/products/", formData, {
+              headers: { "Content-Type": "multipart/form-data" },
+            });
 
       toast({
         title: isArabic ? "تم!" : "Success!",
         description: isEditMode
-          ? (isArabic ? "تم تحديث منتجك بنجاح" : "Your product has been updated successfully")
-          : ((showNewCategoryForm && newCategory.name)
-            ? (isArabic
-              ? "تم إرسال طلب التصنيف الجديد للمراجعة. سيتم نشر المنتج بعد موافقة الإدارة."
-              : "New category request submitted for review. Your product will be published after admin approval.")
-            : (isArabic
-              ? "تم نشر منتجك بنجاح"
-              : "Your product has been listed successfully")),
+          ? isArabic
+            ? "تم تحديث منتجك بنجاح"
+            : "Your product has been updated successfully"
+          : showNewCategoryForm && newCategory.name
+          ? isArabic
+            ? "تم إرسال طلب التصنيف الجديد للمراجعة. سيتم نشر المنتج بعد موافقة الإدارة."
+            : "New category request submitted for review. Your product will be published after admin approval."
+          : isArabic
+          ? "تم نشر منتجك بنجاح"
+          : "Your product has been listed successfully",
       });
 
       navigate(isEditMode ? "/marketplace/my-listings" : "/marketplace");
@@ -432,7 +524,7 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
       console.error("Error response data:", error.response?.data);
       console.error("Error response status:", error.response?.status);
       console.error("Error response headers:", error.response?.headers);
-      
+
       // Log all validation errors
       if (error.response?.data) {
         console.error("=== Backend Validation Errors ===");
@@ -440,7 +532,7 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
           console.error(`${field}:`, error.response.data[field]);
         });
       }
-      
+
       toast({
         title: isArabic ? "خطأ" : "Error",
         description:
@@ -475,18 +567,22 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
             description: newMaterial.description,
             description_ar: newMaterial.description_ar,
           });
-          
+
           console.log("Material created:", materialResponse.data);
-          
+
           // Use the newly created material ID
           const newMaterialId = materialResponse.data.id;
-          
+
           const formData = new FormData();
           formData.append("material", newMaterialId);
-          
+
           // Add material listing data
           Object.keys(materialData).forEach((key) => {
-            if (key !== "material" && key !== "custom_material_name" && materialData[key]) {
+            if (
+              key !== "material" &&
+              key !== "custom_material_name" &&
+              materialData[key]
+            ) {
               formData.append(key, materialData[key]);
             }
           });
@@ -498,9 +594,13 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
 
           formData.append("status", "active");
 
-          const listingResponse = await api.post("/marketplace/material-listings/", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
+          const listingResponse = await api.post(
+            "/marketplace/material-listings/",
+            formData,
+            {
+              headers: { "Content-Type": "multipart/form-data" },
+            }
+          );
 
           toast({
             title: isArabic ? "تم!" : "Success!",
@@ -515,7 +615,11 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
           console.error("Material creation error:", materialError);
           toast({
             title: isArabic ? "خطأ" : "Error",
-            description: materialError.response?.data?.message || (isArabic ? "فشل إضافة المادة الخام" : "Failed to create material"),
+            description:
+              materialError.response?.data?.message ||
+              (isArabic
+                ? "فشل إضافة المادة الخام"
+                : "Failed to create material"),
             variant: "destructive",
           });
           setLoading(false);
@@ -525,24 +629,31 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
 
       // Regular flow: material already selected
       const formData = new FormData();
-      
+
       // Validate material is selected
       if (!materialData.material) {
         toast({
           title: isArabic ? "خطأ" : "Error",
-          description: isArabic ? "يرجى اختيار مادة خام" : "Please select a raw material",
+          description: isArabic
+            ? "يرجى اختيار مادة خام"
+            : "Please select a raw material",
           variant: "destructive",
         });
         setLoading(false);
         return;
       }
-      
+
       formData.append("material", materialData.material);
       console.log("Adding material ID:", materialData.material);
-      
+
       // Add material listing data
       Object.keys(materialData).forEach((key) => {
-        if (key !== "material" && key !== "custom_material_name" && key !== "notes" && materialData[key]) {
+        if (
+          key !== "material" &&
+          key !== "custom_material_name" &&
+          key !== "notes" &&
+          materialData[key]
+        ) {
           formData.append(key, materialData[key]);
           console.log(`FormData: ${key} = ${materialData[key]}`);
         }
@@ -559,23 +670,32 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
       console.log("Status: active");
 
       console.log("Sending to backend...");
-      
+
       // Use PUT for edit, POST for create
-      const response = isEditMode && editType === 'material'
-        ? await api.put(`/marketplace/material-listings/${editId}/`, formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          })
-        : await api.post("/marketplace/material-listings/", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
+      const response =
+        isEditMode && editType === "material"
+          ? await api.put(
+              `/marketplace/material-listings/${editId}/`,
+              formData,
+              {
+                headers: { "Content-Type": "multipart/form-data" },
+              }
+            )
+          : await api.post("/marketplace/material-listings/", formData, {
+              headers: { "Content-Type": "multipart/form-data" },
+            });
 
       console.log("Response:", response.data);
 
       toast({
         title: isArabic ? "تم!" : "Success!",
         description: isEditMode
-          ? (isArabic ? "تم تحديث المادة بنجاح" : "Your material has been updated successfully")
-          : (isArabic ? "تم نشر المادة بنجاح" : "Your material has been listed successfully"),
+          ? isArabic
+            ? "تم تحديث المادة بنجاح"
+            : "Your material has been updated successfully"
+          : isArabic
+          ? "تم نشر المادة بنجاح"
+          : "Your material has been listed successfully",
       });
 
       navigate(isEditMode ? "/marketplace/my-listings" : "/marketplace");
@@ -598,12 +718,16 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
   return (
     <div className="min-h-screen bg-cream">
       <Navbar />
-      
+
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <h1 className="text-4xl font-bold text-forest mb-8 text-center">
           {isEditMode
-            ? (isArabic ? "تعديل العنصر" : "Edit Item")
-            : (isArabic ? "بيع عنصر" : "Sell an Item")}
+            ? isArabic
+              ? "تعديل العنصر"
+              : "Edit Item"
+            : isArabic
+            ? "بيع عنصر"
+            : "Sell an Item"}
         </h1>
 
         <Tabs value={itemType} onValueChange={setItemType} className="w-full">
@@ -638,7 +762,10 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                         id="title"
                         value={productData.title}
                         onChange={(e) =>
-                          setProductData({ ...productData, title: e.target.value })
+                          setProductData({
+                            ...productData,
+                            title: e.target.value,
+                          })
                         }
                         required
                       />
@@ -651,7 +778,10 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                         id="title_ar"
                         value={productData.title_ar}
                         onChange={(e) =>
-                          setProductData({ ...productData, title_ar: e.target.value })
+                          setProductData({
+                            ...productData,
+                            title_ar: e.target.value,
+                          })
                         }
                       />
                     </div>
@@ -701,7 +831,11 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                         {isArabic ? "التصنيف *" : "Category *"}
                       </Label>
                       <Select
-                        value={showNewCategoryForm ? "new" : (productData.category || "")}
+                        value={
+                          showNewCategoryForm
+                            ? "new"
+                            : productData.category || ""
+                        }
                         onValueChange={(value) => {
                           if (value === "new") {
                             setShowNewCategoryForm(true);
@@ -714,27 +848,45 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                         required={!showNewCategoryForm}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={isArabic ? "اختر تصنيف" : "Select category"} />
+                          <SelectValue
+                            placeholder={
+                              isArabic ? "اختر تصنيف" : "Select category"
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {loadingData ? (
                             <SelectItem value="loading" disabled>
                               {isArabic ? "جاري التحميل..." : "Loading..."}
                             </SelectItem>
-                          ) : Array.isArray(categories) && categories.length > 0 ? (
+                          ) : Array.isArray(categories) &&
+                            categories.length > 0 ? (
                             <>
                               {categories.map((cat) => (
-                                <SelectItem key={cat.id} value={cat.id.toString()}>
-                                  {isArabic && cat.name_ar ? cat.name_ar : cat.name}
+                                <SelectItem
+                                  key={cat.id}
+                                  value={cat.id.toString()}
+                                >
+                                  {isArabic && cat.name_ar
+                                    ? cat.name_ar
+                                    : cat.name}
                                 </SelectItem>
                               ))}
-                              <SelectItem value="new" className="text-orange font-semibold border-t mt-2 pt-2">
-                                + {isArabic ? "أضف تصنيف جديد" : "Add New Category"}
+                              <SelectItem
+                                value="new"
+                                className="text-orange font-semibold border-t mt-2 pt-2"
+                              >
+                                +{" "}
+                                {isArabic
+                                  ? "أضف تصنيف جديد"
+                                  : "Add New Category"}
                               </SelectItem>
                             </>
                           ) : (
                             <SelectItem value="disabled" disabled>
-                              {isArabic ? "لا توجد تصنيفات متاحة" : "No categories available"}
+                              {isArabic
+                                ? "لا توجد تصنيفات متاحة"
+                                : "No categories available"}
                             </SelectItem>
                           )}
                         </SelectContent>
@@ -750,7 +902,10 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                         step="0.01"
                         value={productData.price}
                         onChange={(e) =>
-                          setProductData({ ...productData, price: e.target.value })
+                          setProductData({
+                            ...productData,
+                            price: e.target.value,
+                          })
                         }
                         required
                       />
@@ -780,19 +935,26 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                     <Card className="bg-orange/5 border-orange/30">
                       <CardHeader>
                         <CardTitle className="text-sm text-forest">
-                          {isArabic ? "معلومات التصنيف الجديد" : "New Category Information"}
+                          {isArabic
+                            ? "معلومات التصنيف الجديد"
+                            : "New Category Information"}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="grid md:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label>
-                              {isArabic ? "اسم التصنيف (English) *" : "Category Name (English) *"}
+                              {isArabic
+                                ? "اسم التصنيف (English) *"
+                                : "Category Name (English) *"}
                             </Label>
                             <Input
                               value={newCategory.name}
                               onChange={(e) =>
-                                setNewCategory({ ...newCategory, name: e.target.value })
+                                setNewCategory({
+                                  ...newCategory,
+                                  name: e.target.value,
+                                })
                               }
                               placeholder="e.g., Textiles, Rubber, Organic Waste"
                               required
@@ -800,38 +962,57 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                           </div>
                           <div className="space-y-2">
                             <Label>
-                              {isArabic ? "اسم التصنيف (عربي)" : "Category Name (Arabic)"}
+                              {isArabic
+                                ? "اسم التصنيف (عربي)"
+                                : "Category Name (Arabic)"}
                             </Label>
                             <Input
                               value={newCategory.name_ar}
                               onChange={(e) =>
-                                setNewCategory({ ...newCategory, name_ar: e.target.value })
+                                setNewCategory({
+                                  ...newCategory,
+                                  name_ar: e.target.value,
+                                })
                               }
-                              placeholder={isArabic ? "مثال: منسوجات، مطاط، نفايات عضوية" : ""}
+                              placeholder={
+                                isArabic
+                                  ? "مثال: منسوجات، مطاط، نفايات عضوية"
+                                  : ""
+                              }
                             />
                           </div>
                         </div>
                         <div className="grid md:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label>
-                              {isArabic ? "وصف التصنيف (English)" : "Category Description (English)"}
+                              {isArabic
+                                ? "وصف التصنيف (English)"
+                                : "Category Description (English)"}
                             </Label>
                             <Textarea
                               value={newCategory.description}
                               onChange={(e) =>
-                                setNewCategory({ ...newCategory, description: e.target.value })
+                                setNewCategory({
+                                  ...newCategory,
+                                  description: e.target.value,
+                                })
                               }
                               rows={3}
                             />
                           </div>
                           <div className="space-y-2">
                             <Label>
-                              {isArabic ? "وصف التصنيف (عربي)" : "Category Description (Arabic)"}
+                              {isArabic
+                                ? "وصف التصنيف (عربي)"
+                                : "Category Description (Arabic)"}
                             </Label>
                             <Textarea
                               value={newCategory.description_ar}
                               onChange={(e) =>
-                                setNewCategory({ ...newCategory, description_ar: e.target.value })
+                                setNewCategory({
+                                  ...newCategory,
+                                  description_ar: e.target.value,
+                                })
                               }
                               rows={3}
                             />
@@ -842,11 +1023,18 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                           variant="outline"
                           onClick={() => {
                             setShowNewCategoryForm(false);
-                            setNewCategory({ name: "", name_ar: "", description: "", description_ar: "" });
+                            setNewCategory({
+                              name: "",
+                              name_ar: "",
+                              description: "",
+                              description_ar: "",
+                            });
                           }}
                           className="w-full"
                         >
-                          {isArabic ? "إلغاء - اختيار تصنيف موجود" : "Cancel - Select Existing Category"}
+                          {isArabic
+                            ? "إلغاء - اختيار تصنيف موجود"
+                            : "Cancel - Select Existing Category"}
                         </Button>
                       </CardContent>
                     </Card>
@@ -895,7 +1083,10 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                       id="location"
                       value={productData.location}
                       onChange={(e) =>
-                        setProductData({ ...productData, location: e.target.value })
+                        setProductData({
+                          ...productData,
+                          location: e.target.value,
+                        })
                       }
                       placeholder={
                         isArabic ? "مثال: القاهرة، مصر" : "e.g., Cairo, Egypt"
@@ -906,7 +1097,9 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
 
                   {/* Images */}
                   <div className="space-y-2">
-                    <Label>{isArabic ? "الصور (حد أقصى 5)" : "Images (Max 5)"}</Label>
+                    <Label>
+                      {isArabic ? "الصور (حد أقصى 5)" : "Images (Max 5)"}
+                    </Label>
                     <div className="border-2 border-dashed border-sage/30 rounded-lg p-8 text-center">
                       <Upload className="w-12 h-12 mx-auto text-sage mb-4" />
                       <Label
@@ -961,8 +1154,12 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                         ? "جاري النشر..."
                         : "Publishing..."
                       : isEditMode
-                      ? (isArabic ? "تحديث المنتج" : "Update Product")
-                      : (isArabic ? "نشر المنتج" : "Publish Product")}
+                      ? isArabic
+                        ? "تحديث المنتج"
+                        : "Update Product"
+                      : isArabic
+                      ? "نشر المنتج"
+                      : "Publish Product"}
                   </Button>
                 </form>
               </CardContent>
@@ -982,10 +1179,16 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                   {/* Material Selection */}
                   <div className="space-y-2">
                     <Label htmlFor="material">
-                      {isArabic ? "اختر المادة الخام *" : "Select Raw Material *"}
+                      {isArabic
+                        ? "اختر المادة الخام *"
+                        : "Select Raw Material *"}
                     </Label>
                     <Select
-                      value={showNewMaterialForm ? "new" : (materialData.material || "")}
+                      value={
+                        showNewMaterialForm
+                          ? "new"
+                          : materialData.material || ""
+                      }
                       onValueChange={(value) => {
                         if (value === "new") {
                           setShowNewMaterialForm(true);
@@ -998,24 +1201,45 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                       required={!showNewMaterialForm}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={isArabic ? "اختر مادة خام" : "Select a raw material"} />
+                        <SelectValue
+                          placeholder={
+                            isArabic ? "اختر مادة خام" : "Select a raw material"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {Array.isArray(materials) && materials.length > 0 ? (
                           <>
                             {materials.map((mat) => (
-                              <SelectItem key={mat.id} value={mat.id.toString()}>
-                                {isArabic && mat.name_ar ? mat.name_ar : mat.name}
+                              <SelectItem
+                                key={mat.id}
+                                value={mat.id.toString()}
+                              >
+                                {isArabic && mat.name_ar
+                                  ? mat.name_ar
+                                  : mat.name}
                               </SelectItem>
                             ))}
-                            <SelectItem value="new" className="text-orange font-semibold border-t mt-2 pt-2">
-                              + {isArabic ? "أضف مادة خام جديدة" : "Add New Raw Material"}
+                            <SelectItem
+                              value="new"
+                              className="text-orange font-semibold border-t mt-2 pt-2"
+                            >
+                              +{" "}
+                              {isArabic
+                                ? "أضف مادة خام جديدة"
+                                : "Add New Raw Material"}
                             </SelectItem>
                           </>
                         ) : (
                           <>
-                            <SelectItem value="new" className="text-orange font-semibold">
-                              + {isArabic ? "أضف مادة خام جديدة" : "Add New Raw Material"}
+                            <SelectItem
+                              value="new"
+                              className="text-orange font-semibold"
+                            >
+                              +{" "}
+                              {isArabic
+                                ? "أضف مادة خام جديدة"
+                                : "Add New Raw Material"}
                             </SelectItem>
                           </>
                         )}
@@ -1028,31 +1252,44 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                     <Card className="bg-orange/5 border-orange/30">
                       <CardHeader>
                         <CardTitle className="text-sm text-forest">
-                          {isArabic ? "معلومات المادة الخام الجديدة" : "New Raw Material Information"}
+                          {isArabic
+                            ? "معلومات المادة الخام الجديدة"
+                            : "New Raw Material Information"}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         {/* Category Selection for New Material */}
                         <div className="space-y-2">
-                          <Label>
-                            {isArabic ? "التصنيف *" : "Category *"}
-                          </Label>
+                          <Label>{isArabic ? "التصنيف *" : "Category *"}</Label>
                           <Select
                             value={newMaterial.category}
                             onValueChange={(value) =>
-                              setNewMaterial({ ...newMaterial, category: value })
+                              setNewMaterial({
+                                ...newMaterial,
+                                category: value,
+                              })
                             }
                             required
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder={isArabic ? "اختر تصنيف" : "Select category"} />
+                              <SelectValue
+                                placeholder={
+                                  isArabic ? "اختر تصنيف" : "Select category"
+                                }
+                              />
                             </SelectTrigger>
                             <SelectContent>
-                              {Array.isArray(categories) && categories.map((cat) => (
-                                <SelectItem key={cat.id} value={cat.id.toString()}>
-                                  {isArabic && cat.name_ar ? cat.name_ar : cat.name}
-                                </SelectItem>
-                              ))}
+                              {Array.isArray(categories) &&
+                                categories.map((cat) => (
+                                  <SelectItem
+                                    key={cat.id}
+                                    value={cat.id.toString()}
+                                  >
+                                    {isArabic && cat.name_ar
+                                      ? cat.name_ar
+                                      : cat.name}
+                                  </SelectItem>
+                                ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -1060,12 +1297,17 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                         <div className="grid md:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label>
-                              {isArabic ? "اسم المادة (English) *" : "Material Name (English) *"}
+                              {isArabic
+                                ? "اسم المادة (English) *"
+                                : "Material Name (English) *"}
                             </Label>
                             <Input
                               value={newMaterial.name}
                               onChange={(e) =>
-                                setNewMaterial({ ...newMaterial, name: e.target.value })
+                                setNewMaterial({
+                                  ...newMaterial,
+                                  name: e.target.value,
+                                })
                               }
                               placeholder="e.g., PET Bottles, Cardboard"
                               required
@@ -1073,38 +1315,55 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                           </div>
                           <div className="space-y-2">
                             <Label>
-                              {isArabic ? "اسم المادة (عربي)" : "Material Name (Arabic)"}
+                              {isArabic
+                                ? "اسم المادة (عربي)"
+                                : "Material Name (Arabic)"}
                             </Label>
                             <Input
                               value={newMaterial.name_ar}
                               onChange={(e) =>
-                                setNewMaterial({ ...newMaterial, name_ar: e.target.value })
+                                setNewMaterial({
+                                  ...newMaterial,
+                                  name_ar: e.target.value,
+                                })
                               }
-                              placeholder={isArabic ? "مثال: زجاجات بلاستيك، كرتون" : ""}
+                              placeholder={
+                                isArabic ? "مثال: زجاجات بلاستيك، كرتون" : ""
+                              }
                             />
                           </div>
                         </div>
                         <div className="grid md:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label>
-                              {isArabic ? "وصف المادة (English)" : "Material Description (English)"}
+                              {isArabic
+                                ? "وصف المادة (English)"
+                                : "Material Description (English)"}
                             </Label>
                             <Textarea
                               value={newMaterial.description}
                               onChange={(e) =>
-                                setNewMaterial({ ...newMaterial, description: e.target.value })
+                                setNewMaterial({
+                                  ...newMaterial,
+                                  description: e.target.value,
+                                })
                               }
                               rows={3}
                             />
                           </div>
                           <div className="space-y-2">
                             <Label>
-                              {isArabic ? "وصف المادة (عربي)" : "Material Description (Arabic)"}
+                              {isArabic
+                                ? "وصف المادة (عربي)"
+                                : "Material Description (Arabic)"}
                             </Label>
                             <Textarea
                               value={newMaterial.description_ar}
                               onChange={(e) =>
-                                setNewMaterial({ ...newMaterial, description_ar: e.target.value })
+                                setNewMaterial({
+                                  ...newMaterial,
+                                  description_ar: e.target.value,
+                                })
                               }
                               rows={3}
                             />
@@ -1115,11 +1374,19 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                           variant="outline"
                           onClick={() => {
                             setShowNewMaterialForm(false);
-                            setNewMaterial({ name: "", name_ar: "", category: "", description: "", description_ar: "" });
+                            setNewMaterial({
+                              name: "",
+                              name_ar: "",
+                              category: "",
+                              description: "",
+                              description_ar: "",
+                            });
                           }}
                           className="w-full"
                         >
-                          {isArabic ? "إلغاء - اختيار مادة موجودة" : "Cancel - Select Existing Material"}
+                          {isArabic
+                            ? "إلغاء - اختيار مادة موجودة"
+                            : "Cancel - Select Existing Material"}
                         </Button>
                       </CardContent>
                     </Card>
@@ -1135,7 +1402,10 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                         id="mat_title"
                         value={materialData.title}
                         onChange={(e) =>
-                          setMaterialData({ ...materialData, title: e.target.value })
+                          setMaterialData({
+                            ...materialData,
+                            title: e.target.value,
+                          })
                         }
                         required
                       />
@@ -1232,7 +1502,9 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                           <SelectItem value="ton">Ton</SelectItem>
                           <SelectItem value="bag">Bag</SelectItem>
                           <SelectItem value="item">Item</SelectItem>
-                          <SelectItem value="cubic_meter">Cubic Meter</SelectItem>
+                          <SelectItem value="cubic_meter">
+                            Cubic Meter
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1260,7 +1532,9 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="min_order">
-                        {isArabic ? "الحد الأدنى للطلب" : "Minimum Order Quantity"}
+                        {isArabic
+                          ? "الحد الأدنى للطلب"
+                          : "Minimum Order Quantity"}
                       </Label>
                       <Input
                         id="min_order"
@@ -1336,7 +1610,10 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                       id="notes"
                       value={materialData.notes}
                       onChange={(e) =>
-                        setMaterialData({ ...materialData, notes: e.target.value })
+                        setMaterialData({
+                          ...materialData,
+                          notes: e.target.value,
+                        })
                       }
                       rows={3}
                     />
@@ -1344,7 +1621,9 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
 
                   {/* Images */}
                   <div className="space-y-2">
-                    <Label>{isArabic ? "الصور (حد أقصى 5)" : "Images (Max 5)"}</Label>
+                    <Label>
+                      {isArabic ? "الصور (حد أقصى 5)" : "Images (Max 5)"}
+                    </Label>
                     <div className="border-2 border-dashed border-sage/30 rounded-lg p-8 text-center">
                       <Upload className="w-12 h-12 mx-auto text-sage mb-4" />
                       <Label
@@ -1399,8 +1678,12 @@ ${productData.description ? '\nوصف المنتج الأصلي / Original Produ
                         ? "جاري النشر..."
                         : "Publishing..."
                       : isEditMode
-                      ? (isArabic ? "تحديث المادة" : "Update Material")
-                      : (isArabic ? "نشر المادة" : "Publish Material")}
+                      ? isArabic
+                        ? "تحديث المادة"
+                        : "Update Material"
+                      : isArabic
+                      ? "نشر المادة"
+                      : "Publish Material"}
                   </Button>
                 </form>
               </CardContent>

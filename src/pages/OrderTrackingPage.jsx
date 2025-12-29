@@ -493,7 +493,7 @@ const OrderTrackingPage = () => {
                       {isArabic ? "الحالة الحالية" : "Current Status"}
                     </p>
                     <p className="text-sm text-blue-800 capitalize">
-                      {order.order_status.replace(/_/g, " ")}
+                      {order?.order_status?.replace(/_/g, " ")}
                     </p>
                   </div>
                 </div>
