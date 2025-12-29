@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import api from "@/services/api";
 import { useNavigate } from "react-router-dom";
 import {
   Bell,
@@ -9,6 +8,7 @@ import {
   BellOff,
   ChevronLeft,
   ChevronRight,
+  Star,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,12 +53,34 @@ export default function Notifications() {
     },
   });
 
+  // ✅ التنقل لصفحة التقييم مع تمرير البيانات الكاملة
+  const handleAddReview = (notification) => {
+    markRead.mutate([notification.id]);
+
+    // تمرير البيانات عبر state
+    navigate(`/review-product/${notification.product_id}`, {
+      state: {
+        order_id: notification.order_id,
+        product_id: notification.product_id,
+        // سيتم جلب seller_id من بيانات المنتج في صفحة Review
+      },
+    });
+  };
+
+  // ✅ شرط الإشعار المسلَّم
+  const isDeliveredNotification = (n) =>
+    n.type === "order_status" &&
+    n.order_id &&
+    n.product_id &&
+    (n.title_en?.toLowerCase().includes("delivered") ||
+      n.title_ar?.includes("تم تسليم"));
+
   if (isLoading)
     return (
       <>
         <Navbar />
-        <div className="min-h-screen pt-20">
-          <p className="p-6 text-center">Loading notifications...</p>
+        <div className="min-h-screen pt-20 text-center">
+          {language === "en" ? "Loading..." : "جارٍ التحميل..."}
         </div>
         <Footer />
       </>
@@ -70,8 +92,8 @@ export default function Notifications() {
       <div className="min-h-screen pt-20 pb-10">
         <div className="container mx-auto max-w-2xl p-6">
           <Card>
-            <CardHeader className="flex justify-between items-center">
-              <CardTitle className="flex gap-2 items-center">
+            <CardHeader className="flex flex-row justify-between items-center">
+              <CardTitle className="flex items-center gap-2">
                 <Bell className="w-5 h-5 text-forest" />
                 {language === "en" ? "Notifications" : "الإشعارات"}
               </CardTitle>
@@ -95,10 +117,10 @@ export default function Notifications() {
             </CardHeader>
 
             <CardContent className="p-0">
-              <div className="h-[500px] overflow-y-auto">
+              <div className="max-h-[600px] overflow-y-auto">
                 {notifications.length === 0 ? (
                   <div className="py-12 text-center text-muted-foreground">
-                    <BellOff className="mx-auto mb-2 opacity-30" />
+                    <BellOff className="mx-auto mb-2 w-16 h-16 opacity-30" />
                     {language === "en" ? "No notifications" : "لا توجد إشعارات"}
                   </div>
                 ) : (
@@ -111,15 +133,13 @@ export default function Notifications() {
                     >
                       <div className="flex justify-between items-start gap-4">
                         <div className="flex-1">
-                          {n.title && (
-                            <h4
-                              className={`font-medium mb-1 ${
-                                !n.is_read ? "text-forest" : ""
-                              }`}
-                            >
-                              {n.title}
-                            </h4>
-                          )}
+                          <h4
+                            className={`font-medium mb-1 ${
+                              !n.is_read ? "text-forest" : ""
+                            }`}
+                          >
+                            {language === "en" ? n.title_en : n.title_ar}
+                          </h4>
                           <p
                             className={`text-sm leading-relaxed ${
                               !n.is_read
@@ -127,7 +147,7 @@ export default function Notifications() {
                                 : "text-muted-foreground"
                             }`}
                           >
-                            {n.message}
+                            {language === "en" ? n.msg_en : n.msg_ar}
                           </p>
                           <p className="text-xs text-muted-foreground mt-2">
                             {new Date(n.created_at).toLocaleString(
@@ -141,7 +161,20 @@ export default function Notifications() {
                               }
                             )}
                           </p>
+
+                          {/* ✅ زر Add Review للطلبات المُسلّمة */}
+                          {isDeliveredNotification(n) && (
+                            <Button
+                              size="sm"
+                              className="mt-3 bg-forest hover:bg-forest/90 text-white"
+                              onClick={() => handleAddReview(n)}
+                            >
+                              <Star className="w-4 h-4 mr-1" />
+                              {language === "en" ? "Add Review" : "إضافة تقييم"}
+                            </Button>
+                          )}
                         </div>
+
                         {!n.is_read && (
                           <Button
                             size="sm"
