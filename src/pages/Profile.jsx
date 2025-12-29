@@ -127,8 +127,8 @@ const UserProfile = () => {
 
           const [prodRes, matRes, revRes] = await Promise.all([
             // Use marketplaceService.getAll with explicit params for strict filtering
-            marketplaceService.products.getAll(ownerParams),
-            marketplaceService.materialListings.getAll(ownerParams),
+            marketplaceService.products.getMyProducts(ownerParams),
+            marketplaceService.materialListings.getMyListings(ownerParams),
             userService.getUserReviews(uid),
           ]);
 

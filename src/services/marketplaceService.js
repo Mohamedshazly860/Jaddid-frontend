@@ -22,6 +22,8 @@ const marketplaceService = {
     getAll: (params) => api.get("/marketplace/material-listings/", { params }),
     getById: (id) => api.get(`/marketplace/material-listings/${id}/`),
     getMyListings: () => api.get("/marketplace/material-listings/my_listings/"),
+    getSellerItems: (sellerId) =>
+      api.get(`/marketplace/material-listings/seller/${sellerId}/`),
     create: (data) =>
       api.post("/marketplace/material-listings/", data, {
         headers: { "Content-Type": "multipart/form-data" },

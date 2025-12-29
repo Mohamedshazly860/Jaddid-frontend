@@ -1,4 +1,3 @@
-// src/pages/CheckoutPage.jsx
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -9,9 +8,9 @@ import {
   ArrowLeft,
   CreditCard,
   CheckCircle,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MapPin } from "lucide-react";
 import {
   MapContainer,
   TileLayer,
@@ -50,20 +49,13 @@ import {
 } from "@stripe/react-stripe-js";
 import "leaflet/dist/leaflet.css";
 
-// Initialize Stripe with your publishable key
 const stripePromise = loadStripe(
-  "pk_test_51SjQkcK65lNEvJYPLfZoTGETICTt4w2wGnB8WcILuOZhA7gbo8HleGdxSpEYtKhUgsrxeIxSOMbO5LHt5pgJyYV2004BfufJlT"
+  "pk_test_51SiINbRzio7GBwIbdpjIaEKxg4h61jCDpxnJAx1bUZbhOMlHqFPTsqGrmPwzLtAGnUzSPg0JgDDL6yV05e2nSQvB0014bCbij9"
 );
 
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-  iconUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  shadowUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-});
+// Fee constants
+const SERVICE_FEE_PERCENTAGE = 0.1; // 10%
+const DELIVERY_FEE = 20; // 20 EGP
 
 const MapEffect = () => {
   const map = useMap();
@@ -103,7 +95,6 @@ const LocationMarker = ({ position, setPosition, setAddress, isArabic }) => {
   return position === null ? null : <Marker position={position} />;
 };
 
-// Stripe Payment Form Component
 const StripePaymentForm = ({
   amount,
   onSuccess,
@@ -117,7 +108,6 @@ const StripePaymentForm = ({
   const [error, setError] = useState(null);
   const [clientSecret, setClientSecret] = useState(null);
 
-  // Create payment intent when component mounts
   useEffect(() => {
     const createIntent = async () => {
       try {
@@ -141,7 +131,6 @@ const StripePaymentForm = ({
     setError(null);
 
     try {
-      // Confirm payment with Stripe
       const { error: stripeError, paymentIntent } =
         await stripe.confirmCardPayment(clientSecret, {
           payment_method: {
@@ -156,7 +145,6 @@ const StripePaymentForm = ({
       }
 
       if (paymentIntent.status === "succeeded") {
-        // Call success with payment intent ID
         onSuccess(paymentIntent.id);
         setIsProcessing(false);
       } else {
@@ -182,7 +170,7 @@ const StripePaymentForm = ({
         color: "#9e2146",
       },
     },
-    hidePostalCode: true, // This removes the ZIP code field
+    hidePostalCode: true,
   };
 
   return (
@@ -279,7 +267,6 @@ const CheckoutPage = () => {
   });
 
   const [isMapOpen, setIsMapOpen] = useState(false);
-  const [stockErrors, setStockErrors] = useState([]);
 
   const handleConfirmLocation = () => {
     setCustomerInfo((prev) => ({
@@ -322,9 +309,6 @@ const CheckoutPage = () => {
       setLoading(true);
       const response = await marketplaceService.cart.get();
       setCart(response.data);
-
-      // Validate stock immediately after fetching cart
-      validateStock(response.data);
     } catch (error) {
       toast({
         title: isArabic ? "خطأ" : "Error",
@@ -336,60 +320,8 @@ const CheckoutPage = () => {
     }
   };
 
-  const validateStock = (cartData) => {
-    const errors = [];
-
-    cartData?.items?.forEach((item) => {
-      const itemData = item.product || item.material_listing;
-      const availableStock =
-        itemData?.stock_quantity || itemData?.quantity || 0;
-      const requestedQuantity = Math.round(parseFloat(item.quantity) || 0);
-
-      if (requestedQuantity > availableStock) {
-        errors.push({
-          itemId: item.id,
-          title: itemData?.title || "Item",
-          requested: requestedQuantity,
-          available: availableStock,
-        });
-      }
-    });
-
-    setStockErrors(errors);
-
-    // Show toast if there are stock errors
-    if (errors.length > 0) {
-      toast({
-        title: isArabic ? "تحذير المخزون" : "Stock Warning",
-        description: isArabic
-          ? `${errors.length} عنصر يتجاوز المخزون المتاح`
-          : `${errors.length} item(s) exceed available stock`,
-        variant: "destructive",
-      });
-    }
-  };
-
   const updateQuantity = async (itemId, newQuantity) => {
     const qtyNum = Math.max(1, Math.round(parseFloat(newQuantity) || 0));
-
-    // Find the item to check stock
-    const item = cart.items.find((i) => i.id === itemId);
-    if (item) {
-      const itemData = item.product || item.material_listing;
-      const availableStock =
-        itemData?.stock_quantity || itemData?.quantity || 0;
-
-      if (qtyNum > availableStock) {
-        toast({
-          title: isArabic ? "خطأ في المخزون" : "Stock Error",
-          description: isArabic
-            ? `المخزون المتاح فقط ${availableStock}`
-            : `Only ${availableStock} available in stock`,
-          variant: "destructive",
-        });
-        return;
-      }
-    }
 
     setCart((prevCart) => ({
       ...prevCart,
@@ -416,7 +348,6 @@ const CheckoutPage = () => {
       });
       const response = await marketplaceService.cart.get();
       setCart(response.data);
-      validateStock(response.data);
     } catch (error) {
       fetchCart();
       toast({
@@ -429,7 +360,7 @@ const CheckoutPage = () => {
     }
   };
 
-  const calculateTotal = () => {
+  const calculateSubtotal = () => {
     return (
       cart?.items.reduce(
         (sum, item) =>
@@ -439,6 +370,16 @@ const CheckoutPage = () => {
         0
       ) || 0
     );
+  };
+
+  const calculateServiceFee = (subtotal) => {
+    return subtotal * SERVICE_FEE_PERCENTAGE;
+  };
+
+  const calculateTotal = () => {
+    const subtotal = calculateSubtotal();
+    const serviceFee = calculateServiceFee(subtotal);
+    return subtotal + serviceFee + DELIVERY_FEE;
   };
 
   const handlePayNow = async () => {
@@ -462,28 +403,6 @@ const CheckoutPage = () => {
       return;
     }
 
-    // Check for stock errors before proceeding
-    if (stockErrors.length > 0) {
-      const errorMessages = stockErrors
-        .map(
-          (err) =>
-            `${err.title}: ${isArabic ? "طلبت" : "Requested"} ${
-              err.requested
-            }, ${isArabic ? "متاح" : "Available"} ${err.available}`
-        )
-        .join("\n");
-
-      toast({
-        title: isArabic ? "خطأ في المخزون" : "Stock Error",
-        description: isArabic
-          ? "بعض العناصر تتجاوز المخزون المتاح. يرجى تعديل الكميات."
-          : "Some items exceed available stock. Please adjust quantities.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Open payment dialog
     setShowPaymentDialog(true);
   };
 
@@ -515,8 +434,7 @@ const CheckoutPage = () => {
     setIsProcessing(true);
 
     try {
-      // Group items by seller AND order type
-      const orderGroups = {};
+      const itemsBySeller = {};
 
       cart.items.forEach((item) => {
         const rawSellerId =
@@ -530,65 +448,41 @@ const CheckoutPage = () => {
           return;
         }
 
-        const orderType = item.product ? "product" : "material";
-        const groupKey = `${rawSellerId}-${orderType}`;
-
-        if (!orderGroups[groupKey]) {
-          orderGroups[groupKey] = {
-            sellerId: String(rawSellerId),
-            orderType: orderType,
-            items: [],
-          };
-        }
-
-        orderGroups[groupKey].items.push(item);
+        const sellerKey = String(rawSellerId);
+        if (!itemsBySeller[sellerKey]) itemsBySeller[sellerKey] = [];
+        itemsBySeller[sellerKey].push(item);
       });
 
       let firstOrderId = null;
 
-      // Create one order per group (seller + order type combination)
-      for (const group of Object.values(orderGroups)) {
+      for (const [sellerId, sellerItems] of Object.entries(itemsBySeller)) {
         const orderData = {
-          seller_id: group.sellerId,
+          seller_id: sellerId,
           delivery_address: customerInfo.address,
           customer_lat: customerInfo.lat,
           customer_lng: customerInfo.lng,
-          order_type: group.orderType,
-          items: group.items.map((item) => ({
+          order_type: sellerItems[0]?.product ? "product" : "material",
+          stripe_payment_id: paymentIntentId,
+          payment_method: "card",
+          status: "pending",
+          items: sellerItems.map((item) => ({
             product_id: item.product?.id || null,
             material_listing_id: item.material_listing?.id || null,
             quantity: Math.round(parseFloat(item.quantity) || 1),
-            unit_price: parseFloat(
-              item.product?.price || item.material_listing?.price_per_unit || 0
-            ),
-            unit: item.product ? "piece" : item.material_listing?.unit || "kg",
           })),
         };
 
-        console.log("Creating order with payment:", {
-          paymentIntentId,
-          orderData,
-          itemsCount: orderData.items.length,
-        });
-
-        // Confirm payment and create order
         const orderResponse = await ordersService.confirmPayment({
           payment_intent_id: paymentIntentId,
           order_data: orderData,
         });
 
-        console.log("Order created:", orderResponse.data);
-
         if (!firstOrderId && orderResponse.data?.id) {
           firstOrderId = orderResponse.data.id;
         }
 
-        // Assign courier after order creation
         if (orderResponse.data?.id) {
           try {
-            console.log(
-              `Assigning courier to order ${orderResponse.data.id}...`
-            );
             const assignmentResponse = await ordersService.assignCourier(
               orderResponse.data.id
             );
@@ -624,7 +518,6 @@ const CheckoutPage = () => {
         title: isArabic ? "خطأ" : "Error",
         description:
           error.response?.data?.error ||
-          error.response?.data?.detail ||
           (isArabic ? "فشل إنشاء الطلب" : "Failed to create order"),
         variant: "destructive",
       });
@@ -646,6 +539,8 @@ const CheckoutPage = () => {
 
   const items = cart?.items || [];
   const isEmpty = items.length === 0;
+  const subtotal = calculateSubtotal();
+  const serviceFee = calculateServiceFee(subtotal);
   const totalAmount = calculateTotal();
 
   return (
@@ -714,22 +609,11 @@ const CheckoutPage = () => {
                         itemData?.images?.[0]?.image || itemData?.primary_image;
                       const imageUrl = getImageUrl(imagePath);
 
-                      // Check stock
-                      const availableStock =
-                        itemData?.stock_quantity || itemData?.quantity || 0;
-                      const requestedQuantity = Math.round(
-                        parseFloat(item.quantity) || 0
-                      );
-                      const hasStockError = requestedQuantity > availableStock;
-
                       return (
                         <div
                           key={item.id}
-                          className={`flex flex-col sm:flex-row gap-4 p-4 border rounded-lg ${
-                            hasStockError ? "border-red-500 bg-red-50" : ""
-                          }`}
+                          className="flex flex-col sm:flex-row gap-4 p-4 border rounded-lg"
                         >
-                          {/* Image */}
                           <div className="w-full sm:w-24 h-48 sm:h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                             {imageUrl ? (
                               <img
@@ -747,7 +631,6 @@ const CheckoutPage = () => {
                             )}
                           </div>
 
-                          {/* Details */}
                           <div className="flex-1 min-w-0">
                             <Link
                               to={`/marketplace/${itemType}/${itemData.id}`}
@@ -767,32 +650,8 @@ const CheckoutPage = () => {
                                   0)
                               ).toFixed(2)}
                             </p>
-
-                            {/* Stock Info */}
-                            <div className="mt-2">
-                              <p
-                                className={`text-xs ${
-                                  hasStockError
-                                    ? "text-red-600 font-semibold"
-                                    : "text-gray-500"
-                                }`}
-                              >
-                                {isArabic
-                                  ? "المخزون المتاح:"
-                                  : "Available stock:"}{" "}
-                                {availableStock}
-                              </p>
-                              {hasStockError && (
-                                <p className="text-xs text-red-600 font-semibold mt-1">
-                                  {isArabic
-                                    ? "⚠️ الكمية المطلوبة تتجاوز المخزون المتاح"
-                                    : "⚠️ Requested quantity exceeds available stock"}
-                                </p>
-                              )}
-                            </div>
                           </div>
 
-                          {/* Quantity */}
                           <div className="flex flex-col items-stretch sm:items-end gap-3 sm:gap-2 w-full sm:w-auto">
                             <div className="flex items-center justify-center gap-2">
                               <Button
@@ -817,11 +676,8 @@ const CheckoutPage = () => {
                                   if (!isNaN(val) && val > 0)
                                     updateQuantity(item.id, val);
                                 }}
-                                className={`w-20 text-center ${
-                                  hasStockError ? "border-red-500" : ""
-                                }`}
+                                className="w-20 text-center"
                                 min="1"
-                                max={availableStock}
                                 step="1"
                                 disabled={isPaymentConfirmed}
                               />
@@ -945,7 +801,7 @@ const CheckoutPage = () => {
                           {isArabic ? "المجموع الفرعي" : "Subtotal"}
                         </span>
                         <span className="font-semibold">
-                          ${totalAmount.toFixed(2)}
+                          ${subtotal.toFixed(2)}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -954,26 +810,37 @@ const CheckoutPage = () => {
                             isArabic ? "font-arabic" : ""
                           }`}
                         >
-                          {isArabic ? "الشحن" : "Shipping"}
+                          {isArabic ? "رسوم الخدمة (10%)" : "Service Fee (10%)"}
                         </span>
-                        <span className="font-semibold text-green-600">
-                          {isArabic ? "مجاني" : "FREE"}
+                        <span className="font-semibold">
+                          ${serviceFee.toFixed(2)}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span
-                          className={`font-bold ${
+                          className={`text-gray-600 ${
+                            isArabic ? "font-arabic" : ""
+                          }`}
+                        >
+                          {isArabic ? "رسوم التوصيل" : "Delivery Fee"}
+                        </span>
+                        <span className="font-semibold">
+                          ${DELIVERY_FEE.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="border-t pt-2 flex justify-between">
+                        <span
+                          className={`font-bold text-lg ${
                             isArabic ? "font-arabic" : ""
                           }`}
                         >
                           {isArabic ? "الإجمالي" : "Total"}
                         </span>
-                        <span className="font-bold text-green-600">
+                        <span className="font-bold text-lg text-green-600">
                           ${totalAmount.toFixed(2)}
                         </span>
                       </div>
 
-                      {/* Payment Status */}
                       {isPaymentConfirmed && (
                         <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md mt-3">
                           <CheckCircle className="w-5 h-5 text-green-600" />

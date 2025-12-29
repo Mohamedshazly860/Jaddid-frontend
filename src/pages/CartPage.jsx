@@ -409,25 +409,14 @@ const CartPage = () => {
                         ${cart?.total_price || 0}
                       </span>
                     </div>
+                    <div className="flex justify-between"></div>
                     <div className="flex justify-between">
                       <span
                         className={`text-gray-600 ${
                           isArabic ? "font-arabic" : ""
                         }`}
                       >
-                        {isArabic ? "الشحن" : "Shipping"}
-                      </span>
-                      <span className="font-semibold text-green-600">
-                        {isArabic ? "مجاني" : "FREE"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span
-                        className={`text-gray-600 ${
-                          isArabic ? "font-arabic" : ""
-                        }`}
-                      >
-                        {isArabic ? "الضريبة" : "Tax"}
+                        {isArabic ? "الزيادات" : "Adds"}
                       </span>
                       <span
                         className={`font-semibold ${

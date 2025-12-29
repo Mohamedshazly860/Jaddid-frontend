@@ -4,13 +4,6 @@ const ReviewCard = ({ review }) => {
   return (
     <div className="bg-gradient-to-br from-[#FFF1CA]/30 to-white p-5 rounded-xl border-l-4 border-[#708A58] hover:shadow-md transition-shadow">
       <div className="flex items-start gap-4">
-        {/* Reviewer Avatar */}
-        <img
-          src={review.avatar}
-          alt={review.reviewer}
-          className="w-12 h-12 rounded-full border-2 border-[#708A58]"
-        />
-
         <div className="flex-1">
           {/* Reviewer Name & Date */}
           <div className="flex justify-between items-start mb-2">
