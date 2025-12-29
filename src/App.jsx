@@ -23,6 +23,8 @@ import UserProfile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
 import Notifications from "./pages/Notifications";
 import Reviews from "./pages/Reviews";
+import ReviewProduct from "./pages/ReviewProduct"; // ✅ أضف هذا
+
 import CheckoutPage from "./pages/CheckoutPage";
 import OrdersPage from "./pages/OrdersPage";
 import OrderTrackingPage from "./pages/OrderTrackingPage";
@@ -77,6 +79,10 @@ const App = () => (
               <Route path="/debug-auth" element={<DebugAuthPage />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/reviews" element={<Reviews />} />
+              <Route
+                path="/review-product/:productId"
+                element={<ReviewProduct />}
+              />
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
