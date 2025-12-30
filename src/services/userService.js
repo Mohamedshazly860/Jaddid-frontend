@@ -86,6 +86,8 @@ const userService = {
     return userService.getUserById(id);
   },
 
+  getUserProfile: (userId) => api.get(`/accounts/users/${userId}/`),
+
   // Fetch products/listings/reviews belonging to a user using query params as a fallback
   getUserProducts: async (userId, params = {}) => {
     if (!userId) return Promise.resolve({ data: [] });

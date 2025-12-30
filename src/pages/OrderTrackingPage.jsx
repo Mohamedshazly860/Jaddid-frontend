@@ -31,7 +31,6 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
-// Fix Leaflet default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
@@ -42,7 +41,6 @@ L.Icon.Default.mergeOptions({
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
 
-// Custom courier icon (green truck)
 const courierIcon = new L.Icon({
   iconUrl:
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='%2316a34a'%3E%3Cpath d='M18 18.5a1.5 1.5 0 0 1-1 1.4V21a1 1 0 0 1-2 0v-1H9v1a1 1 0 0 1-2 0v-1.1a1.5 1.5 0 0 1-1-1.4v-2a6 6 0 0 1 1-3.3V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6.2a6 6 0 0 1 1 3.3v2zM9 6h6v3H9V6zm9 10.5V15a4 4 0 0 0-8 0v1.5a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5z'/%3E%3C/svg%3E",
@@ -51,7 +49,6 @@ const courierIcon = new L.Icon({
   popupAnchor: [0, -40],
 });
 
-// Custom destination icon (red pin)
 const destinationIcon = new L.Icon({
   iconUrl:
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='%23dc2626'%3E%3Cpath d='M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z'/%3E%3C/svg%3E",
@@ -73,7 +70,6 @@ const OrderTrackingPage = () => {
   const [error, setError] = useState(null);
   const [isSimulationTriggered, setIsSimulationTriggered] = useState(false);
 
-  // Order status progression
   const statusSteps = [
     {
       key: "pending",
@@ -168,7 +164,6 @@ const OrderTrackingPage = () => {
     tracking?.tracking_logs?.length,
   ]);
 
-  // Poll for updates every 5 seconds if not delivered
   useEffect(() => {
     if (
       !order ||
@@ -225,14 +220,13 @@ const OrderTrackingPage = () => {
     if (order.courier_assigned && order.courier_name) {
       return {
         name: order.courier_name,
-        phone: order.courier_phone || null,
+        transport_type: order.transport_type || null,
       };
     }
 
     return null;
   };
 
-  // Get courier's current location from tracking data
   const getCourierLocation = () => {
     if (!tracking?.latest_location) return null;
 
@@ -252,7 +246,6 @@ const OrderTrackingPage = () => {
     };
   };
 
-  // Check if we should show the map
   const shouldShowMap = () => {
     const activeStatuses = ["in_progress", "on_the_way"];
     return order && activeStatuses.includes(order.order_status);
@@ -458,47 +451,20 @@ const OrderTrackingPage = () => {
                       <p className="font-semibold text-lg">
                         {courierInfo.name}
                       </p>
-                      {courierInfo.phone && (
-                        <div className="flex items-center gap-2 mt-2">
-                          <Phone className="w-4 h-4 text-gray-600" />
-                          <span className="text-sm text-gray-600">
-                            {courierInfo.phone}
+                      {courierInfo.transport_type && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <Truck className="w-4 h-4 text-gray-600" />
+                          <span className="text-sm text-gray-600 capitalize">
+                            {/* Replaces underscores with spaces, e.g., 'motor_cycle' -> 'motor cycle' */}
+                            {courierInfo.transport_type.replace(/_/g, " ")}
                           </span>
                         </div>
                       )}
                     </div>
                   </div>
-                  {tracking?.latest_location?.distance_remaining && (
-                    <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                      <p className="text-sm text-blue-900">
-                        {isArabic ? "المسافة المتبقية:" : "Distance remaining:"}
-                      </p>
-                      <p className="font-semibold text-blue-900">
-                        {tracking.latest_location.distance_remaining.toFixed(2)}{" "}
-                        km
-                      </p>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             )}
-
-            {/* Status Info */}
-            <Card className="bg-blue-50 border-blue-200">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-blue-600 rounded-full animate-pulse" />
-                  <div>
-                    <p className="font-semibold text-blue-900">
-                      {isArabic ? "الحالة الحالية" : "Current Status"}
-                    </p>
-                    <p className="text-sm text-blue-800 capitalize">
-                      {order?.order_status?.replace(/_/g, " ")}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Right Side - Map or Progress Tracking or Delivered State */}
@@ -573,8 +539,8 @@ const OrderTrackingPage = () => {
                 </CardHeader>
                 <CardContent>
                   <div
-                    className="rounded-lg overflow-hidden border-2 border-gray-200"
-                    style={{ height: "500px" }}
+                    className="rounded-lg overflow-hidden border-2 border-gray-200 relative"
+                    style={{ height: "500px", zIndex: 0 }}
                   >
                     <MapContainer
                       center={[courierLocation.lat, courierLocation.lng]}

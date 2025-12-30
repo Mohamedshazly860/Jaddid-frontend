@@ -13,7 +13,6 @@ const tryEndpoints = async (endpoints, config) => {
         `[ordersService] failed GET ${ep} -> ${status ?? err.code}`,
         err.response?.data || err.message
       );
-      // continue trying next endpoint on 4xx/5xx
       if (!err.response || err.response.status >= 500) throw err;
     }
   }
@@ -43,11 +42,9 @@ const tryPostEndpoints = async (endpoints, data, config) => {
 
 const ordersService = {
   create: async (data) => {
-    // Create the order
     const orderResponse = await api.post("/orders/", data);
     const order = orderResponse.data;
 
-    // Automatically assign a courier to the new order
     if (order && order.id) {
       try {
         const assignmentResponse = await ordersService.assignCourier(order.id);
@@ -56,7 +53,6 @@ const ordersService = {
           assignmentResponse.data
         );
 
-        // Check if assignment was actually created
         if (
           !assignmentResponse.data ||
           !assignmentResponse.data.assignment_id
@@ -79,7 +75,6 @@ const ordersService = {
           err
         );
         console.error(`[ordersService] Error response:`, err.response?.data);
-        // Don't fail the order creation if courier assignment fails
       }
     }
 
@@ -87,15 +82,12 @@ const ordersService = {
   },
   getAll: () => api.get("/orders/"),
 
-  // Simplify getById to use the confirmed working path
   getById: async (orderId) => {
     return api.get(`/orders/orders/${orderId}/`);
   },
 
-  // Convenience wrapper to fetch a single order (alias)
   getOrder: async (orderId) => ordersService.getById(orderId),
 
-  // FIXED: Tracking endpoint - includes /logistics/ prefix
   getTracking: async (orderId) => {
     const endpoints = [
       `/logistics/tracking/${orderId}/`,
@@ -104,7 +96,6 @@ const ordersService = {
     return tryEndpoints(endpoints);
   },
 
-  // FIXED: Assign courier - correct path is /logistics/order/{id}/assign/
   assignCourier: async (orderId, data = {}) => {
     const endpoints = [
       `/logistics/order/${orderId}/assign/`,
@@ -113,7 +104,6 @@ const ordersService = {
     return tryPostEndpoints(endpoints, data);
   },
 
-  // FIXED: Start delivery - correct path is /logistics/assignment/{id}/start/
   startDelivery: async (assignmentId, data = {}) => {
     const endpoints = [
       `/logistics/assignment/${assignmentId}/start/`,
@@ -127,8 +117,8 @@ const ordersService = {
 
   cancel: (id) => api.post(`/orders/orders/${id}/cancel/`),
 
-  getPurchases: () => api.get("/orders/orders/"),
-  getSales: () => api.get("/orders/orders/"),
+  getPurchases: () => api.get("/orders/orders/my_orders"),
+  getSales: () => api.get("/orders/orders/seller_orders"),
 
   // Stripe payment methods
   createPaymentIntent: (data) =>
@@ -136,7 +126,6 @@ const ordersService = {
 
   confirmPayment: (data) => api.post("/orders/orders/", data),
 
-  // Manual assignment helper - call this explicitly when needed
   assignCourierManually: async (orderId) => {
     try {
       console.log(

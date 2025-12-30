@@ -1,4 +1,3 @@
-// Product/Material Detail Page
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
@@ -14,7 +13,12 @@ import {
   Eye,
   ArrowLeft,
   User,
+  Mail,
+  Phone,
+  Calendar,
 } from "lucide-react";
+import Navbar from "@/components/landing/Navbar";
+import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,14 +38,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const ProductDetailPage = () => {
-  const { type, id } = useParams(); // type: 'product' or 'material'
+  const { type, id } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
   const { language } = useLanguage();
   const isArabic = language === "ar";
   const [item, setItem] = useState(null);
+  const [seller, setSeller] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sellerLoading, setSellerLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
   const { toast } = useToast();
 
@@ -63,11 +69,24 @@ const ProductDetailPage = () => {
       }
 
       setItem(itemRes.data);
-      setReviews(reviewsRes.data);
+
+      const data = reviewsRes.data;
+      const actualReviewsArray = data.results
+        ? data.results
+        : Array.isArray(data)
+        ? data
+        : [];
+      setReviews(actualReviewsArray);
+      // Fetch seller details after getting item
+      if (itemRes.data) {
+        fetchSellerDetails(itemRes.data);
+      }
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to load item details",
+        title: isArabic ? "خطأ" : "Error",
+        description: isArabic
+          ? "فشل تحميل تفاصيل العنصر"
+          : "Failed to load item details",
         variant: "destructive",
       });
     } finally {
@@ -75,11 +94,40 @@ const ProductDetailPage = () => {
     }
   };
 
+  const fetchSellerDetails = async (itemData) => {
+    try {
+      setSellerLoading(true);
+
+      // Extract seller ID from item data
+      const sellerId =
+        itemData.seller?.id || itemData.seller_id || itemData.seller;
+
+      if (!sellerId) {
+        console.warn("No seller ID found in item data");
+        return;
+      }
+
+      console.log("Fetching seller details for ID:", sellerId);
+
+      // Fetch seller profile from user service
+      const sellerRes = await userService.getUserProfile(sellerId);
+      console.log("Seller details:", sellerRes.data);
+      setSeller(sellerRes.data);
+    } catch (error) {
+      console.error("Failed to fetch seller details:", error);
+      // Don't show error toast for seller details as it's not critical
+    } finally {
+      setSellerLoading(false);
+    }
+  };
+
   const handleAddToCart = async () => {
     if (!isAuthenticated) {
       toast({
-        title: "Login Required",
-        description: "Please login to add items to cart",
+        title: isArabic ? "تسجيل الدخول مطلوب" : "Login Required",
+        description: isArabic
+          ? "يرجى تسجيل الدخول لإضافة العناصر إلى السلة"
+          : "Please login to add items to cart",
         variant: "destructive",
       });
       navigate("/login");
@@ -98,20 +146,22 @@ const ProductDetailPage = () => {
       console.log("Cart response:", response);
 
       toast({
-        title: "Success",
-        description: "Item added to cart",
+        title: isArabic ? "نجح" : "Success",
+        description: isArabic
+          ? "تمت إضافة العنصر إلى السلة"
+          : "Item added to cart",
       });
     } catch (error) {
       console.error("Cart error:", error);
       console.error("Error response:", error.response);
       console.error("Error data:", error.response?.data);
       toast({
-        title: "Error",
+        title: isArabic ? "خطأ" : "Error",
         description:
           error.response?.data?.detail ||
           error.response?.data?.error ||
           error.message ||
-          "Failed to add to cart",
+          (isArabic ? "فشل الإضافة إلى السلة" : "Failed to add to cart"),
         variant: "destructive",
       });
     }
@@ -120,8 +170,10 @@ const ProductDetailPage = () => {
   const handleToggleFavorite = async () => {
     if (!isAuthenticated) {
       toast({
-        title: "Login Required",
-        description: "Please login to add items to favorites",
+        title: isArabic ? "تسجيل الدخول مطلوب" : "Login Required",
+        description: isArabic
+          ? "يرجى تسجيل الدخول لإضافة العناصر إلى المفضلة"
+          : "Please login to add items to favorites",
         variant: "destructive",
       });
       navigate("/login");
@@ -135,24 +187,21 @@ const ProductDetailPage = () => {
         await marketplaceService.materialListings.toggleFavorite(id);
       }
       toast({
-        title: "Success",
-        description: "Favorite updated",
+        title: isArabic ? "نجح" : "Success",
+        description: isArabic ? "تم تحديث المفضلة" : "Favorite updated",
       });
       fetchItemDetails();
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Please login to add favorites",
+        title: isArabic ? "خطأ" : "Error",
+        description: isArabic
+          ? "يرجى تسجيل الدخول لإضافة المفضلة"
+          : "Please login to add favorites",
         variant: "destructive",
       });
     }
   };
 
-  const handleOrderNow = () => {
-    navigate(`/marketplace/checkout/${type}/${id}`);
-  };
-
-  // Determine if current logged-in user is the owner/seller of the item
   const getIdFrom = (u) => {
     if (!u) return null;
     return (
@@ -185,7 +234,9 @@ const ProductDetailPage = () => {
   const handleDelete = async () => {
     if (!isOwner()) return;
     const ok = window.confirm(
-      "Are you sure you want to delete this item? This action cannot be undone."
+      isArabic
+        ? "هل أنت متأكد من حذف هذا العنصر؟ لا يمكن التراجع عن هذا الإجراء."
+        : "Are you sure you want to delete this item? This action cannot be undone."
     );
     if (!ok) return;
 
@@ -196,14 +247,21 @@ const ProductDetailPage = () => {
       } else {
         await userService.deleteMaterialListing(id);
       }
-      toast({ title: "Deleted", description: "Item deleted successfully" });
+      toast({
+        title: isArabic ? "تم الحذف" : "Deleted",
+        description: isArabic
+          ? "تم حذف العنصر بنجاح"
+          : "Item deleted successfully",
+      });
       navigate("/marketplace/my-listings");
     } catch (error) {
       console.error("Delete error:", error);
       toast({
-        title: "Error",
+        title: isArabic ? "خطأ" : "Error",
         description:
-          error.response?.data?.detail || error.message || "Failed to delete",
+          error.response?.data?.detail ||
+          error.message ||
+          (isArabic ? "فشل الحذف" : "Failed to delete"),
         variant: "destructive",
       });
     } finally {
@@ -211,12 +269,25 @@ const ProductDetailPage = () => {
     }
   };
 
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+      return imagePath;
+    }
+    if (imagePath.startsWith("/media")) {
+      return `http://127.0.0.1:8000${imagePath}`;
+    }
+    return `http://127.0.0.1:8000/media/${imagePath}`;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Package className="w-16 h-16 mx-auto mb-4 animate-pulse text-green-500" />
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">
+            {isArabic ? "جاري التحميل..." : "Loading..."}
+          </p>
         </div>
       </div>
     );
@@ -226,9 +297,11 @@ const ProductDetailPage = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-xl text-gray-600 mb-4">Item not found</p>
+          <p className="text-xl text-gray-600 mb-4">
+            {isArabic ? "العنصر غير موجود" : "Item not found"}
+          </p>
           <Button onClick={() => navigate("/marketplace")}>
-            Back to Marketplace
+            {isArabic ? "العودة إلى السوق" : "Back to Marketplace"}
           </Button>
         </div>
       </div>
@@ -242,29 +315,14 @@ const ProductDetailPage = () => {
         (item.primary_image ? [{ image: item.primary_image }] : []);
   const currentImage = images[selectedImage]?.image || null;
 
-  // Helper function to get full image URL
-  const getImageUrl = (imagePath) => {
-    if (!imagePath) return null;
-    // If it's already a full URL, return as-is
-    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
-      return imagePath;
-    }
-    // If it already starts with /media, prepend the base URL
-    if (imagePath.startsWith("/media")) {
-      return `http://127.0.0.1:8000${imagePath}`;
-    }
-    // Otherwise, assume it needs /media prefix
-    return `http://127.0.0.1:8000/media/${imagePath}`;
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header Navigation */}
+      <Navbar />
       <div className="bg-white border-b">
         <div className="container mx-auto px-4 py-4">
           <Button variant="ghost" onClick={() => navigate("/marketplace")}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Marketplace
+            {isArabic ? "العودة إلى السوق" : "Back to Marketplace"}
           </Button>
         </div>
       </div>
@@ -360,7 +418,9 @@ const ProductDetailPage = () => {
                   ${type === "material" ? item.price_per_unit : item.price}
                 </span>
                 {type === "material" && (
-                  <span className="text-lg text-gray-500">per {item.unit}</span>
+                  <span className="text-lg text-gray-500">
+                    {isArabic ? `لكل ${item.unit}` : `per ${item.unit}`}
+                  </span>
                 )}
               </div>
 
@@ -373,7 +433,7 @@ const ProductDetailPage = () => {
                         {item.average_rating || "0.0"}
                       </span>
                       <span className="text-sm text-gray-500">
-                        ({item.reviews_count} reviews)
+                        ({item.reviews_count} {isArabic ? "تقييم" : "reviews"})
                       </span>
                     </div>
                   </CardContent>
@@ -386,7 +446,9 @@ const ProductDetailPage = () => {
                       <span className="text-xl font-semibold">
                         {item.views_count}
                       </span>
-                      <span className="text-sm text-gray-500">views</span>
+                      <span className="text-sm text-gray-500">
+                        {isArabic ? "مشاهدة" : "views"}
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
@@ -395,22 +457,31 @@ const ProductDetailPage = () => {
               {/* Details */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Item Details</CardTitle>
+                  <CardTitle className="text-lg">
+                    {isArabic ? "تفاصيل العنصر" : "Item Details"}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Condition:</span>
+                    <span className="text-gray-600">
+                      {isArabic ? "الحالة:" : "Condition:"}
+                    </span>
                     <Badge variant="outline">{item.condition}</Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Quantity Available:</span>
+                    <span className="text-gray-600">
+                      {isArabic ? "الكمية المتاحة:" : "Quantity Available:"}
+                    </span>
                     <span className="font-semibold">
-                      {item.quantity} {item.unit || "units"}
+                      {item.quantity}{" "}
+                      {item.unit || (isArabic ? "وحدة" : "units")}
                     </span>
                   </div>
                   {item.material && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Material Type:</span>
+                      <span className="text-gray-600">
+                        {isArabic ? "نوع المادة:" : "Material Type:"}
+                      </span>
                       <span className="font-semibold">
                         {item.material_name}
                       </span>
@@ -425,30 +496,108 @@ const ProductDetailPage = () => {
                 </CardContent>
               </Card>
 
-              {/* Seller Info */}
+              {/* Seller Info - Enhanced */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Seller Information</CardTitle>
+                  <CardTitle className="text-lg">
+                    {isArabic ? "معلومات البائع" : "Seller Information"}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src={item.seller_avatar} />
-                      <AvatarFallback>
-                        <User className="w-5 h-5" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <p className="font-semibold">{item.seller_name}</p>
-                      <p className="text-sm text-gray-500">
-                        {item.seller_email}
-                      </p>
+                  {sellerLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
                     </div>
-                    <Button variant="outline" size="sm">
-                      <MessageSquare className="w-4 h-4 mr-2" />
-                      Contact
-                    </Button>
-                  </div>
+                  ) : seller ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-16 h-16">
+                          <AvatarImage src={seller.profile_picture} />
+                          <AvatarFallback className="text-lg">
+                            {seller.first_name?.[0]}
+                            {seller.last_name?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="font-semibold text-lg">
+                            {seller.first_name} {seller.last_name}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {seller.role === "seller"
+                              ? isArabic
+                                ? "بائع"
+                                : "Seller"
+                              : seller.role === "buyer"
+                              ? isArabic
+                                ? "مشتري"
+                                : "Buyer"
+                              : seller.role}
+                          </p>
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Mail className="w-4 h-4 text-gray-500" />
+                          <span className="text-gray-600">{seller.email}</span>
+                        </div>
+
+                        {seller.phone && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Phone className="w-4 h-4 text-gray-500" />
+                            <span className="text-gray-600">
+                              {seller.phone}
+                            </span>
+                          </div>
+                        )}
+
+                        {seller.address && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <MapPin className="w-4 h-4 text-gray-500" />
+                            <span className="text-gray-600">
+                              {seller.address}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2 text-sm">
+                          <Calendar className="w-4 h-4 text-gray-500" />
+                          <span className="text-gray-600">
+                            {isArabic ? "عضو منذ" : "Member since"}{" "}
+                            {new Date(
+                              seller.created_at || seller.date_joined
+                            ).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      <Button variant="outline" size="sm" className="w-full">
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        {isArabic ? "راسل البائع" : "Contact Seller"}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <Avatar>
+                        <AvatarFallback>
+                          <User className="w-5 h-5" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-semibold">
+                          {item.seller_name || (isArabic ? "البائع" : "Seller")}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {item.seller_email ||
+                            (isArabic
+                              ? "معلومات غير متاحة"
+                              : "Information not available")}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -457,19 +606,12 @@ const ProductDetailPage = () => {
             <div className="flex gap-3">
               <Button className="flex-1" size="lg" onClick={handleAddToCart}>
                 <ShoppingCart className="w-5 h-5 mr-2" />
-                Add to Cart
+                {isArabic ? "أضف إلى السلة" : "Add to Cart"}
               </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="flex-1"
-                onClick={handleOrderNow}
-              >
-                Order Now
-              </Button>
+
               {isAuthenticated && isOwner() && (
                 <Button variant="destructive" size="lg" onClick={handleDelete}>
-                  Delete
+                  {isArabic ? "حذف" : "Delete"}
                 </Button>
               )}
             </div>
@@ -479,23 +621,24 @@ const ProductDetailPage = () => {
         {/* Reviews Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Customer Reviews</CardTitle>
-            <CardDescription>{reviews.length} reviews</CardDescription>
+            <CardTitle>
+              {isArabic ? "تقييمات العملاء" : "Customer Reviews"}
+            </CardTitle>
+            <CardDescription>
+              {reviews.length} {isArabic ? "تقييم" : "reviews"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {reviews.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">No reviews yet</p>
+              <p className="text-center text-gray-500 py-8">
+                {isArabic ? "لا توجد تقييمات بعد" : "No reviews yet"}
+              </p>
             ) : (
               <div className="space-y-4">
                 {reviews.map((review) => (
                   <div key={review.id} className="border-b pb-4 last:border-0">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback>
-                            <User className="w-4 h-4" />
-                          </AvatarFallback>
-                        </Avatar>
                         <div>
                           <p className="font-semibold">
                             {review.reviewer_name}
@@ -527,6 +670,7 @@ const ProductDetailPage = () => {
           </CardContent>
         </Card>
       </div>
+      <Footer />
     </div>
   );
 };

@@ -53,16 +53,15 @@ export default function Notifications() {
     },
   });
 
-  // ✅ التنقل لصفحة التقييم مع تمرير البيانات الكاملة
   const handleAddReview = (notification) => {
     markRead.mutate([notification.id]);
 
-    // تمرير البيانات عبر state
+    // تمرير البيانات عبر state مع order_item_id
     navigate(`/review-product/${notification.product_id}`, {
       state: {
         order_id: notification.order_id,
         product_id: notification.product_id,
-        // سيتم جلب seller_id من بيانات المنتج في صفحة Review
+        order_item_id: notification.order_item_id,
       },
     });
   };

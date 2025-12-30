@@ -12,7 +12,6 @@ import { Navigation, MapPin, User, Clock, Map as MapIcon } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// Fix for default marker icons in Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
@@ -23,7 +22,6 @@ L.Icon.Default.mergeOptions({
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
 
-// Helper to handle the "missing chunks" map glitch
 const MapResizer = ({ center }) => {
   const map = useMap();
   useEffect(() => {
@@ -34,8 +32,6 @@ const MapResizer = ({ center }) => {
   }, [map, center]);
   return null;
 };
-
-// ... (Your courierIcon and customerIcon definitions remain here)
 
 const CourierMap = ({ tracking, customerLat, customerLng, isArabic }) => {
   const [courierPosition, setCourierPosition] = useState(null);

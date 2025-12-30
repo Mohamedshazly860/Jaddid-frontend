@@ -36,8 +36,9 @@ const marketplaceService = {
     toggleFavorite: (id) =>
       api.post(`/marketplace/material-listings/${id}/toggle_favorite/`),
     publish: (id) => api.post(`/marketplace/material-listings/${id}/publish/`),
+
     getReviews: (id) =>
-      api.get(`/marketplace/material-listings/${id}/reviews/`),
+      api.get(`/community/reviews/`, { params: { product_id: id } }),
   },
 
   // ========== PRODUCTS ==========
@@ -57,7 +58,8 @@ const marketplaceService = {
     toggleFavorite: (id) =>
       api.post(`/marketplace/products/${id}/toggle_favorite/`),
     publish: (id) => api.post(`/marketplace/products/${id}/publish/`),
-    getReviews: (id) => api.get(`/marketplace/products/${id}/reviews/`),
+    getReviews: (id) =>
+      api.get(`/community/reviews/`, { params: { product_id: id } }),
   },
 
   // ========== CART ==========
