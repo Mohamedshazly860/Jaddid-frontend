@@ -132,7 +132,6 @@ const userService = {
   },
 
   getUserReviews: (userId) => {
-    // Change from '/marketplace/users/...' to '/community/users/...'
     return api.get(`/community/reviews/?target_user=${userId}`);
   },
 

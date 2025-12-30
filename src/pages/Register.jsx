@@ -10,6 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import "./Register.css";
+import Navbar from "@/components/landing/Navbar";
+import Footer from "@/components/landing/Footer";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -28,13 +30,11 @@ export default function Register() {
     e.preventDefault();
     setError("");
 
-    // Validation: Check if passwords match
     if (password !== confirmPassword) {
       setError("كلمات المرور غير متطابقة! / Passwords do not match!");
       return;
     }
 
-    // Validation: Check password strength
     if (password.length < 8) {
       setError(
         "كلمة المرور يجب أن تكون 8 أحرف على الأقل / Password must be at least 8 characters"
@@ -42,7 +42,6 @@ export default function Register() {
       return;
     }
 
-    // Validation: Check if role is selected
     if (!role) {
       setError("الرجاء اختيار نوع الحساب / Please select account type");
       return;
@@ -62,7 +61,6 @@ export default function Register() {
 
       console.log("Registration successful:", response.data);
 
-      // If registration returns tokens, handle login automatically
       const { tokens, user } = response.data;
       if (tokens) {
         const { access, refresh } = tokens;
@@ -79,13 +77,11 @@ export default function Register() {
       console.error("Registration error:", error);
       console.error("Backend Error:", error.response?.data || error.message);
 
-      // Handle different error types
       let errorMessage = "";
 
       if (error.response?.data) {
         const data = error.response.data;
 
-        // Handle field-specific errors
         if (data.email) {
           errorMessage = `البريد الإلكتروني: ${
             Array.isArray(data.email) ? data.email.join(", ") : data.email
@@ -113,7 +109,6 @@ export default function Register() {
         } else if (data.message) {
           errorMessage = data.message;
         } else {
-          // Collect all error messages
           const errors = Object.entries(data)
             .map(
               ([key, value]) =>
@@ -137,7 +132,7 @@ export default function Register() {
 
   return (
     <div className="register-page">
-      <div className="register-form-container">
+      <div className="register-form-container mt-12">
         <h1 className="text-3xl font-bold text-forest mb-6 text-center">
           Create Account
         </h1>
@@ -200,6 +195,8 @@ export default function Register() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="Individual">Individual</SelectItem>
+              <SelectItem value="Factory">Factory</SelectItem>
+              <SelectItem value="Company">Company</SelectItem>
             </SelectContent>
           </Select>
           <button
